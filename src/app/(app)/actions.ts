@@ -1,0 +1,756 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserId, requireRole } from "@/lib/auth/session";
+import { sendUserEmail } from "@/server/services/email.service";
+import { env } from "@/lib/env";
+
+function asText(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asNumberOrNull(value: string) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function asIntegerOrNull(value: string) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function splitCsv(value: string) {
+  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+function sanitizeAttachmentPath(path: string, ownerId: string): string | null {
+  if (!path) return null;
+  if (path.includes("..") || path.startsWith("/")) return null;
+  if (!path.startsWith(`${ownerId}/`)) return null;
+  return path;
+}
+
+type NotificationKind =
+  | "project_applied"
+  | "project_assigned"
+  | "status_updated"
+  | "project_completed"
+  | "project_accepted"
+  | "enhancement_requested"
+  | "system";
+
+const CTA_BY_KIND: Record<NotificationKind, { label: string; path: string }> = {
+  project_applied: { label: "Review applicants", path: "/client" },
+  project_assigned: { label: "Open your dashboard", path: "/freelancer" },
+  status_updated: { label: "Open your dashboard", path: "/client" },
+  project_completed: { label: "Review delivery", path: "/client" },
+  project_accepted: { label: "Open your dashboard", path: "/freelancer" },
+  enhancement_requested: { label: "View revision thread", path: "/freelancer" },
+  system: { label: "Open your dashboard", path: "/" },
+};
+
+async function createNotification(input: {
+  recipientId: string;
+  actorId?: string;
+  projectId?: number;
+  kind: NotificationKind;
+  title: string;
+  message: string;
+  emailCta?: { label: string; path: string };
+}) {
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("notifications").insert({
+    recipient_id: input.recipientId,
+    actor_id: input.actorId ?? null,
+    project_id: input.projectId ?? null,
+    kind: input.kind,
+    title: input.title,
+    message: input.message,
+  });
+
+  const cta = input.emailCta ?? CTA_BY_KIND[input.kind];
+  const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  await sendUserEmail(input.recipientId, {
+    subject: input.title,
+    heading: input.title,
+    body: input.message,
+    ctaLabel: cta?.label,
+    ctaUrl: cta ? `${baseUrl}${cta.path}` : undefined,
+  });
+}
+
+export async function createProjectAction(formData: FormData) {
+  await requireRole(["client", "admin"]);
+  const clientId = await getCurrentUserId();
+  const supabase = await createSupabaseServerClient();
+
+  const title = asText(formData, "title");
+  const description = asText(formData, "description");
+  const budgetType = asText(formData, "budget_type");
+  const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
+  const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
+  const deadline = asText(formData, "deadline");
+  const submittedPath = asText(formData, "attachment_path");
+
+  if (!title || !description) {
+    redirect("/client?error=Title+and+description+are+required");
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const attachmentPath = sanitizeAttachmentPath(submittedPath, clientId);
+  if (submittedPath && !attachmentPath) {
+    redirect("/client?error=Invalid+attachment+path");
+  }
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({
+      client_id: clientId,
+      title,
+      description,
+      budget_type: budgetType || null,
+      budget_min: budgetMin,
+      budget_max: budgetMax,
+      deadline: deadline || null,
+      contact_name: user?.user_metadata?.full_name ?? "Client",
+      contact_email: user?.email ?? "",
+      attachment_path: attachmentPath,
+      status: "open",
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await createNotification({
+    recipientId: clientId,
+    actorId: clientId,
+    projectId: data?.id,
+    kind: "system",
+    title: "Project Created",
+    message: `Project "${title}" was created successfully.`,
+  });
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+}
+
+export async function updateProjectAction(formData: FormData) {
+  await requireRole(["client", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const clientId = await getCurrentUserId();
+
+  const projectId = Number(asText(formData, "project_id"));
+  const title = asText(formData, "title");
+  const description = asText(formData, "description");
+  const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
+  const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
+  const deadline = asText(formData, "deadline");
+  const submittedPath = asText(formData, "attachment_path");
+
+  if (!projectId || !title || !description) {
+    redirect("/client?error=Project+update+payload+is+invalid");
+  }
+
+  const updatePayload: {
+    title: string;
+    description: string;
+    budget_min: number | null;
+    budget_max: number | null;
+    deadline: string | null;
+    attachment_path?: string;
+  } = {
+    title,
+    description,
+    budget_min: budgetMin,
+    budget_max: budgetMax,
+    deadline: deadline || null,
+  };
+
+  if (submittedPath) {
+    const sanitized = sanitizeAttachmentPath(submittedPath, clientId);
+    if (!sanitized) {
+      redirect("/client?error=Invalid+attachment+path");
+    }
+    updatePayload.attachment_path = sanitized;
+  }
+
+  const { error } = await supabase.from("projects").update(updatePayload).eq("id", projectId);
+  if (error) {
+    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await createNotification({
+    recipientId: clientId,
+    actorId: clientId,
+    projectId,
+    kind: "system",
+    title: "Project Updated",
+    message: `Project "${title}" was updated.`,
+  });
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+}
+
+export async function deleteProjectAction(formData: FormData) {
+  await requireRole(["client", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const clientId = await getCurrentUserId();
+  const projectId = Number(asText(formData, "project_id"));
+
+  if (!projectId) {
+    redirect("/client?error=Project+selection+is+invalid");
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("title")
+    .eq("id", projectId)
+    .single();
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) {
+    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await createNotification({
+    recipientId: clientId,
+    actorId: clientId,
+    projectId,
+    kind: "system",
+    title: "Project Deleted",
+    message: `Project "${project?.title ?? `#${projectId}`}" was deleted.`,
+  });
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+  revalidatePath("/admin");
+}
+
+export async function applyToProjectAction(formData: FormData) {
+  await requireRole(["freelancer", "admin"]);
+  const freelancerId = await getCurrentUserId();
+  const supabase = await createSupabaseServerClient();
+
+  const projectId = Number(asText(formData, "project_id"));
+  const coverLetter = asText(formData, "cover_letter");
+
+  if (!projectId) {
+    redirect("/freelancer?error=Project+selection+is+invalid");
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, title, client_id")
+    .eq("id", projectId)
+    .single();
+
+  const { error } = await supabase.from("project_applications").insert({
+    project_id: projectId,
+    freelancer_id: freelancerId,
+    cover_letter: coverLetter || null,
+    status: "applied",
+  });
+
+  if (error) {
+    redirect(`/freelancer?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (project?.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: freelancerId,
+      projectId,
+      kind: "project_applied",
+      title: "New Freelancer Application",
+      message: `A freelancer applied for "${project.title}".`,
+    });
+  }
+
+  revalidatePath("/freelancer");
+  revalidatePath("/admin");
+  revalidatePath("/client");
+}
+
+export async function updateFreelancerProjectStatusAction(formData: FormData) {
+  await requireRole(["freelancer", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const freelancerId = await getCurrentUserId();
+  const projectId = Number(asText(formData, "project_id"));
+  const status = asText(formData, "status");
+
+  if (!projectId || !["in_progress", "completed"].includes(status)) {
+    redirect("/freelancer?error=Status+update+payload+is+invalid");
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, title, client_id")
+    .eq("id", projectId)
+    .single();
+
+  const { error: projectError } = await supabase
+    .from("projects")
+    .update({ status })
+    .eq("id", projectId)
+    .eq("assigned_freelancer_id", freelancerId);
+
+  if (projectError) {
+    redirect(`/freelancer?error=${encodeURIComponent(projectError.message)}`);
+  }
+
+  const appStatus = status === "completed" ? "completed" : "assigned";
+  await supabase
+    .from("project_applications")
+    .update({ status: appStatus })
+    .eq("project_id", projectId)
+    .eq("freelancer_id", freelancerId);
+
+  if (project?.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: freelancerId,
+      projectId,
+      kind: status === "completed" ? "project_completed" : "status_updated",
+      title: status === "completed" ? "Project Completed" : "Project In Progress",
+      message:
+        status === "completed"
+          ? `Freelancer marked "${project.title}" as completed.`
+          : `Freelancer started working on "${project.title}".`,
+    });
+  }
+
+  await createNotification({
+    recipientId: freelancerId,
+    actorId: freelancerId,
+    projectId,
+    kind: "status_updated",
+    title: "Status Updated",
+    message: `Project "${project?.title ?? `#${projectId}`}" is now ${status.replace("_", " ")}.`,
+  });
+
+  revalidatePath("/freelancer");
+  revalidatePath("/client");
+  revalidatePath("/admin");
+}
+
+export async function assignFreelancerAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const adminId = await getCurrentUserId();
+  const supabase = await createSupabaseServerClient();
+
+  const projectId = Number(asText(formData, "project_id"));
+  const freelancerId = asText(formData, "freelancer_id");
+  const applicationId = Number(asText(formData, "application_id"));
+
+  if (!projectId || !freelancerId || !applicationId) {
+    redirect("/admin?error=Assignment+payload+is+invalid");
+  }
+
+  const { error: projectError } = await supabase
+    .from("projects")
+    .update({
+      assigned_freelancer_id: freelancerId,
+      status: "assigned",
+    })
+    .eq("id", projectId);
+
+  if (projectError) {
+    redirect(`/admin?error=${encodeURIComponent(projectError.message)}`);
+  }
+
+  const { error: appError } = await supabase
+    .from("project_applications")
+    .update({ status: "assigned" })
+    .eq("id", applicationId);
+
+  if (appError) {
+    redirect(`/admin?error=${encodeURIComponent(appError.message)}`);
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("title, client_id")
+    .eq("id", projectId)
+    .single();
+
+  await createNotification({
+    recipientId: freelancerId,
+    actorId: adminId,
+    projectId,
+    kind: "project_assigned",
+    title: "Project Assigned",
+    message: `You were assigned to "${project?.title ?? `Project #${projectId}`}".`,
+  });
+
+  if (project?.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: adminId,
+      projectId,
+      kind: "project_assigned",
+      title: "Freelancer Assigned",
+      message: `A freelancer has been assigned to "${project.title}".`,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/freelancer");
+  revalidatePath("/client");
+}
+
+export async function clientDecisionAction(formData: FormData) {
+  await requireRole(["client", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const clientId = await getCurrentUserId();
+  const projectId = Number(asText(formData, "project_id"));
+  const decision = asText(formData, "decision");
+  const description = asText(formData, "description");
+
+  if (!projectId || !["accepted", "enhancement_requested"].includes(decision)) {
+    redirect("/client?error=Decision+payload+is+invalid");
+  }
+
+  if (decision === "enhancement_requested" && !description) {
+    redirect("/client?error=Please+describe+the+changes+you+need");
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("title, assigned_freelancer_id")
+    .eq("id", projectId)
+    .single();
+
+  const nextStatus = decision === "accepted" ? "accepted" : "enhancement_requested";
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      status: nextStatus,
+      client_decision: decision,
+      closed_at: decision === "accepted" ? new Date().toISOString() : null,
+    })
+    .eq("id", projectId)
+    .eq("client_id", clientId);
+
+  if (error) {
+    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (decision === "accepted" && project?.assigned_freelancer_id) {
+    await supabase
+      .from("project_applications")
+      .update({ status: "accepted" })
+      .eq("project_id", projectId)
+      .eq("freelancer_id", project.assigned_freelancer_id);
+  }
+
+  if (decision === "enhancement_requested") {
+    const { error: threadError } = await supabase.from("project_enhancements").insert({
+      project_id: projectId,
+      client_id: clientId,
+      author_id: clientId,
+      kind: "request",
+      description,
+    });
+    if (threadError) {
+      redirect(`/client?error=${encodeURIComponent(threadError.message)}`);
+    }
+  }
+
+  if (project?.assigned_freelancer_id) {
+    await createNotification({
+      recipientId: project.assigned_freelancer_id,
+      actorId: clientId,
+      projectId,
+      kind: decision === "accepted" ? "project_accepted" : "enhancement_requested",
+      title: decision === "accepted" ? "Work Accepted" : "Enhancement Requested",
+      message:
+        decision === "accepted"
+          ? `Client accepted delivery for "${project.title}".`
+          : `Client requested enhancements for "${project.title}".`,
+    });
+  }
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+  revalidatePath("/admin");
+}
+
+export async function addEnhancementMessageAction(formData: FormData) {
+  await requireRole(["client", "freelancer", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const userId = await getCurrentUserId();
+  const projectId = Number(asText(formData, "project_id"));
+  const description = asText(formData, "description");
+  const returnTo = asText(formData, "return_to") || "/client";
+
+  if (!projectId || !description) {
+    redirect(`${returnTo}?error=${encodeURIComponent("Message cannot be empty")}`);
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("title, client_id, assigned_freelancer_id")
+    .eq("id", projectId)
+    .single();
+
+  if (!project) {
+    redirect(`${returnTo}?error=Project+not+found`);
+  }
+
+  const isClient = project.client_id === userId;
+  const isFreelancer = project.assigned_freelancer_id === userId;
+
+  if (!isClient && !isFreelancer) {
+    redirect(`${returnTo}?error=Not+authorized+for+this+thread`);
+  }
+
+  const { error: threadError } = await supabase.from("project_enhancements").insert({
+    project_id: projectId,
+    client_id: isClient ? userId : null,
+    author_id: userId,
+    kind: "reply",
+    description,
+  });
+
+  if (threadError) {
+    redirect(`${returnTo}?error=${encodeURIComponent(threadError.message)}`);
+  }
+
+  const recipientId = isClient ? project.assigned_freelancer_id : project.client_id;
+  if (recipientId) {
+    await createNotification({
+      recipientId,
+      actorId: userId,
+      projectId,
+      kind: "system",
+      title: "New message on enhancement thread",
+      message: `New note on "${project.title}".`,
+    });
+  }
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+}
+
+export async function freelancerResubmitAction(formData: FormData) {
+  await requireRole(["freelancer", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const freelancerId = await getCurrentUserId();
+  const projectId = Number(asText(formData, "project_id"));
+  const description = asText(formData, "description");
+
+  if (!projectId) {
+    redirect("/freelancer?error=Invalid+project");
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("title, client_id, assigned_freelancer_id, status")
+    .eq("id", projectId)
+    .single();
+
+  if (!project || project.assigned_freelancer_id !== freelancerId) {
+    redirect("/freelancer?error=Not+authorized+for+this+project");
+  }
+
+  if (description) {
+    const { error: threadError } = await supabase.from("project_enhancements").insert({
+      project_id: projectId,
+      client_id: null,
+      author_id: freelancerId,
+      kind: "resubmit",
+      description,
+    });
+    if (threadError) {
+      redirect(`/freelancer?error=${encodeURIComponent(threadError.message)}`);
+    }
+  }
+
+  const { error: statusError } = await supabase
+    .from("projects")
+    .update({ status: "completed", client_decision: null })
+    .eq("id", projectId)
+    .eq("assigned_freelancer_id", freelancerId);
+
+  if (statusError) {
+    redirect(`/freelancer?error=${encodeURIComponent(statusError.message)}`);
+  }
+
+  if (project.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: freelancerId,
+      projectId,
+      kind: "project_completed",
+      title: "Revisions delivered",
+      message: `Freelancer re-submitted "${project.title}" for review.`,
+    });
+  }
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+}
+
+export async function updateClientProfileAction(formData: FormData) {
+  await requireRole(["client", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const userId = await getCurrentUserId();
+
+  const fullName = asText(formData, "full_name");
+  const phone = asText(formData, "phone");
+  const companyName = asText(formData, "company_name");
+  const address = asText(formData, "address");
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName, phone: phone || null })
+    .eq("user_id", userId);
+
+  if (profileError) {
+    redirect(`/client?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error: clientError } = await supabase.from("client_profiles").upsert({
+    user_id: userId,
+    company_name: companyName || null,
+    address: address || null,
+  });
+
+  if (clientError) {
+    redirect(`/client?error=${encodeURIComponent(clientError.message)}`);
+  }
+
+  revalidatePath("/client");
+}
+
+export async function updateFreelancerProfileAction(formData: FormData) {
+  await requireRole(["freelancer", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const userId = await getCurrentUserId();
+
+  const fullName = asText(formData, "full_name");
+  const phone = asText(formData, "phone");
+  const country = asText(formData, "country");
+  const state = asText(formData, "state");
+  const hourlyRate = asNumberOrNull(asText(formData, "hourly_rate"));
+  const experienceYears = asIntegerOrNull(asText(formData, "experience_years"));
+  const experienceMonths = asIntegerOrNull(asText(formData, "experience_months"));
+  const professionalTitle = asText(formData, "professional_title");
+  const introduction = asText(formData, "introduction");
+  const availability = asText(formData, "availability");
+  const noticePeriod = asText(formData, "notice_period");
+  const portfolioUrl = asText(formData, "portfolio_url");
+  const profileImage = formData.get("profile_image");
+  const checkboxSkills = formData
+    .getAll("skills")
+    .filter((item): item is string => typeof item === "string");
+  const checkboxSoftware = formData
+    .getAll("software")
+    .filter((item): item is string => typeof item === "string");
+
+  const skills =
+    checkboxSkills.length > 0 ? [...new Set(checkboxSkills.map((s) => s.trim()).filter(Boolean))] : splitCsv(asText(formData, "skills_csv"));
+  const software =
+    checkboxSoftware.length > 0 ? [...new Set(checkboxSoftware.map((s) => s.trim()).filter(Boolean))] : splitCsv(asText(formData, "software_csv"));
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName, phone: phone || null })
+    .eq("user_id", userId);
+  if (profileError) {
+    redirect(`/freelancer/profile?error=${encodeURIComponent(profileError.message)}`);
+  }
+
+  const { error: freelancerError } = await supabase.from("freelancer_profiles").upsert({
+    user_id: userId,
+    country: country || null,
+    state: state || null,
+    hourly_rate: hourlyRate,
+    plm_experience_years: experienceYears,
+    plm_experience_months: experienceMonths,
+    professional_title: professionalTitle || null,
+    introduction: introduction || null,
+    availability: availability || null,
+    notice_period: noticePeriod || null,
+    portfolio_url: portfolioUrl || null,
+  });
+  if (freelancerError) {
+    redirect(`/freelancer/profile?error=${encodeURIComponent(freelancerError.message)}`);
+  }
+
+  await supabase.from("freelancer_skills").delete().eq("freelancer_id", userId);
+  await supabase.from("freelancer_software").delete().eq("freelancer_id", userId);
+
+  if (skills.length > 0) {
+    const { error: skillError } = await supabase
+      .from("freelancer_skills")
+      .insert(skills.map((skill) => ({ freelancer_id: userId, skill })));
+    if (skillError) {
+      redirect(`/freelancer/profile?error=${encodeURIComponent(skillError.message)}`);
+    }
+  }
+
+  if (software.length > 0) {
+    const { error: softwareError } = await supabase
+      .from("freelancer_software")
+      .insert(software.map((tool) => ({ freelancer_id: userId, software: tool })));
+    if (softwareError) {
+      redirect(`/freelancer/profile?error=${encodeURIComponent(softwareError.message)}`);
+    }
+  }
+
+  if (profileImage instanceof File && profileImage.size > 0) {
+    const safeName = profileImage.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const uploadPath = `${userId}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("freelancer-profiles")
+      .upload(uploadPath, profileImage, { upsert: false });
+
+    if (uploadError) {
+      redirect(`/freelancer/profile?error=${encodeURIComponent(uploadError.message)}`);
+    }
+
+    const { error: imagePathError } = await supabase
+      .from("freelancer_profiles")
+      .update({ profile_image_path: uploadPath })
+      .eq("user_id", userId);
+
+    if (imagePathError) {
+      redirect(`/freelancer/profile?error=${encodeURIComponent(imagePathError.message)}`);
+    }
+  }
+
+  revalidatePath("/freelancer");
+  revalidatePath("/freelancer/profile");
+}
+
+export async function markNotificationReadAction(formData: FormData) {
+  await requireRole(["client", "freelancer", "admin"]);
+  const supabase = await createSupabaseServerClient();
+  const userId = await getCurrentUserId();
+  const notificationId = Number(asText(formData, "notification_id"));
+
+  if (!notificationId) return;
+
+  await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", notificationId)
+    .eq("recipient_id", userId);
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+  revalidatePath("/admin");
+}
