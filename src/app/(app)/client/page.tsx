@@ -35,26 +35,9 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
   const safeProjects = projects ?? [];
   const projectIds = safeProjects.map((p) => p.id);
 
-  const { data: applications } = projectIds.length
-    ? await supabase
-        .from("project_applications")
-        .select("id, project_id, freelancer_id, status, applied_at")
-        .in("project_id", projectIds)
-        .order("applied_at", { ascending: false })
-    : { data: [] as Array<{ id: number; project_id: number; freelancer_id: string; status: string; applied_at: string }> };
-
-  const safeApplications = applications ?? [];
-  const applicationsByProject = new Map<number, typeof safeApplications>();
-  for (const app of safeApplications) {
-    const list = applicationsByProject.get(app.project_id) ?? [];
-    list.push(app);
-    applicationsByProject.set(app.project_id, list);
-  }
-
-  const freelancerIdsForIntro = [
-    ...safeApplications.map((a) => a.freelancer_id),
-    ...safeProjects.map((p) => p.assigned_freelancer_id).filter(Boolean) as string[],
-  ];
+  const freelancerIdsForIntro = safeProjects
+    .map((p) => p.assigned_freelancer_id)
+    .filter((id): id is string => Boolean(id));
   const freelancerIntroMap = await loadFreelancerIntros(freelancerIdsForIntro);
 
   const { data: enhancementRows } = projectIds.length
@@ -138,7 +121,6 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
         ) : (
           <div className="space-y-2">
             {safeProjects.map((project) => {
-              const projectApplications = applicationsByProject.get(project.id) ?? [];
               const assignedIntro = project.assigned_freelancer_id
                 ? freelancerIntroMap.get(project.assigned_freelancer_id)
                 : null;
@@ -179,28 +161,6 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                       Assigned Freelancer
                     </p>
                     <FreelancerIntroCard freelancer={assignedIntro} />
-                  </div>
-                ) : null}
-
-                {projectApplications.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                      Applicants ({projectApplications.length})
-                    </p>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {projectApplications.map((app) => {
-                        const intro = freelancerIntroMap.get(app.freelancer_id);
-                        if (!intro) return null;
-                        return (
-                          <div key={app.id} className="space-y-1">
-                            <FreelancerIntroCard freelancer={intro} compact />
-                            <p className="px-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Status: {app.status.replace("_", " ")}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
                   </div>
                 ) : null}
 

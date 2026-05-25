@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserId, requireRole } from "@/lib/auth/session";
 import { sendUserEmail } from "@/server/services/email.service";
 import { env } from "@/lib/env";
@@ -45,7 +46,7 @@ type NotificationKind =
   | "system";
 
 const CTA_BY_KIND: Record<NotificationKind, { label: string; path: string }> = {
-  project_applied: { label: "Review applicants", path: "/client" },
+  project_applied: { label: "Review applicants", path: "/admin" },
   project_assigned: { label: "Open your dashboard", path: "/freelancer" },
   status_updated: { label: "Open your dashboard", path: "/client" },
   project_completed: { label: "Review delivery", path: "/client" },
@@ -252,7 +253,7 @@ export async function applyToProjectAction(formData: FormData) {
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, title, client_id")
+    .select("id, title")
     .eq("id", projectId)
     .single();
 
@@ -267,20 +268,33 @@ export async function applyToProjectAction(formData: FormData) {
     redirect(`/freelancer?error=${encodeURIComponent(error.message)}`);
   }
 
-  if (project?.client_id) {
+  const { data: freelancerProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("user_id", freelancerId)
+    .single();
+  const freelancerName = freelancerProfile?.full_name?.trim() || "A freelancer";
+
+  const adminClient = createSupabaseAdminClient();
+  const { data: admins } = await adminClient
+    .from("profiles")
+    .select("user_id")
+    .eq("role", "admin")
+    .eq("is_active", true);
+
+  for (const adminProfile of (admins ?? []) as Array<{ user_id: string }>) {
     await createNotification({
-      recipientId: project.client_id,
+      recipientId: adminProfile.user_id,
       actorId: freelancerId,
       projectId,
       kind: "project_applied",
       title: "New Freelancer Application",
-      message: `A freelancer applied for "${project.title}".`,
+      message: `${freelancerName} applied for "${project?.title ?? `Project #${projectId}`}".`,
     });
   }
 
   revalidatePath("/freelancer");
   revalidatePath("/admin");
-  revalidatePath("/client");
 }
 
 export async function updateFreelancerProjectStatusAction(formData: FormData) {
@@ -343,6 +357,165 @@ export async function updateFreelancerProjectStatusAction(formData: FormData) {
   revalidatePath("/freelancer");
   revalidatePath("/client");
   revalidatePath("/admin");
+}
+
+export async function adminAssignProjectToFreelancerAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const adminId = await getCurrentUserId();
+  const adminClient = createSupabaseAdminClient();
+
+  const projectId = Number(asText(formData, "project_id"));
+  const freelancerId = asText(formData, "freelancer_id");
+
+  if (!projectId || !freelancerId) {
+    redirect("/admin?error=Assignment+payload+is+invalid");
+  }
+
+  const { data: freelancerProfile, error: freelancerLookupError } = await adminClient
+    .from("freelancer_profiles")
+    .select("user_id")
+    .eq("user_id", freelancerId)
+    .maybeSingle();
+
+  if (freelancerLookupError) {
+    redirect(`/admin?error=${encodeURIComponent(freelancerLookupError.message)}`);
+  }
+  if (!freelancerProfile) {
+    redirect("/admin?error=Selected+user+is+not+a+freelancer");
+  }
+
+  const { error: projectError } = await adminClient
+    .from("projects")
+    .update({
+      assigned_freelancer_id: freelancerId,
+      status: "assigned",
+    })
+    .eq("id", projectId);
+
+  if (projectError) {
+    redirect(`/admin?error=${encodeURIComponent(projectError.message)}`);
+  }
+
+  const { error: appError } = await adminClient
+    .from("project_applications")
+    .upsert(
+      {
+        project_id: projectId,
+        freelancer_id: freelancerId,
+        status: "assigned",
+      },
+      { onConflict: "project_id,freelancer_id" },
+    );
+
+  if (appError) {
+    redirect(`/admin?error=${encodeURIComponent(appError.message)}`);
+  }
+
+  const { data: project } = await adminClient
+    .from("projects")
+    .select("title, client_id")
+    .eq("id", projectId)
+    .single();
+
+  await createNotification({
+    recipientId: freelancerId,
+    actorId: adminId,
+    projectId,
+    kind: "project_assigned",
+    title: "Project Assigned",
+    message: `You were assigned to "${project?.title ?? `Project #${projectId}`}".`,
+  });
+
+  if (project?.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: adminId,
+      projectId,
+      kind: "project_assigned",
+      title: "Freelancer Assigned",
+      message: `A freelancer has been assigned to "${project.title}".`,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/freelancer");
+  revalidatePath("/client");
+}
+
+export async function adminUnassignProjectAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const adminId = await getCurrentUserId();
+  const adminClient = createSupabaseAdminClient();
+
+  const projectId = Number(asText(formData, "project_id"));
+
+  if (!projectId) {
+    redirect("/admin?error=Project+selection+is+invalid");
+  }
+
+  const { data: project, error: lookupError } = await adminClient
+    .from("projects")
+    .select("title, client_id, assigned_freelancer_id, status")
+    .eq("id", projectId)
+    .single();
+
+  if (lookupError) {
+    redirect(`/admin?error=${encodeURIComponent(lookupError.message)}`);
+  }
+
+  if (!project?.assigned_freelancer_id) {
+    redirect("/admin?error=Project+is+not+assigned");
+  }
+
+  if (project.status === "accepted") {
+    redirect("/admin?error=Cannot+cancel+an+accepted+project");
+  }
+
+  const previousFreelancerId = project.assigned_freelancer_id;
+
+  const { error: projectError } = await adminClient
+    .from("projects")
+    .update({
+      assigned_freelancer_id: null,
+      status: "open",
+      client_decision: "pending",
+      closed_at: null,
+    })
+    .eq("id", projectId);
+
+  if (projectError) {
+    redirect(`/admin?error=${encodeURIComponent(projectError.message)}`);
+  }
+
+  await adminClient
+    .from("project_applications")
+    .update({ status: "applied" })
+    .eq("project_id", projectId)
+    .eq("freelancer_id", previousFreelancerId);
+
+  await createNotification({
+    recipientId: previousFreelancerId,
+    actorId: adminId,
+    projectId,
+    kind: "system",
+    title: "Assignment Cancelled",
+    message: `Your assignment to "${project.title}" was cancelled by admin.`,
+  });
+
+  if (project.client_id) {
+    await createNotification({
+      recipientId: project.client_id,
+      actorId: adminId,
+      projectId,
+      kind: "system",
+      title: "Freelancer Unassigned",
+      message: `The assigned freelancer for "${project.title}" was removed. The project is open again.`,
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/freelancer");
+  revalidatePath("/client");
 }
 
 export async function assignFreelancerAction(formData: FormData) {

@@ -26,10 +26,7 @@ const navByRole: Record<ShellRole, Array<{ href: string; label: string }>> = {
     { href: "/account", label: "Account Settings" },
   ],
   admin: [
-    { href: "/client", label: "Client Dashboard" },
-    { href: "/client/profile", label: "Client Profile" },
-    { href: "/freelancer", label: "Freelancer Dashboard" },
-    { href: "/freelancer/profile", label: "Freelancer Profile" },
+    { href: "/admin/users", label: "Registered Users" },
     { href: "/admin", label: "Admin Console" },
     { href: "/account", label: "Account Settings" },
   ],
