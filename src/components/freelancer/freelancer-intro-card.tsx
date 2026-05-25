@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 export type FreelancerIntro = {
   userId: string;
@@ -22,9 +23,8 @@ export function FreelancerIntroCard({
   className,
   linkable = true,
 }: FreelancerIntroCardProps) {
-  const initial = (freelancer.fullName || "F").slice(0, 1).toUpperCase();
-  const size = compact ? "h-12 w-12" : "h-16 w-16";
   const titleSize = compact ? "text-sm" : "text-base";
+  const avatarSize = compact ? 48 : 64;
 
   const Wrapper: React.ElementType = linkable ? Link : "div";
   const wrapperProps = linkable
@@ -40,24 +40,12 @@ export function FreelancerIntroCard({
         className,
       )}
     >
-      {freelancer.profileImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={freelancer.profileImageUrl}
-          alt={freelancer.fullName}
-          className={cn("shrink-0 rounded-full border border-border object-cover", size)}
-        />
-      ) : (
-        <div
-          className={cn(
-            "flex shrink-0 items-center justify-center rounded-full border border-border bg-indigo-50 font-bold text-indigo-700",
-            size,
-            compact ? "text-base" : "text-lg",
-          )}
-        >
-          {initial}
-        </div>
-      )}
+      <ProfileAvatar
+        src={freelancer.profileImageUrl}
+        alt={freelancer.fullName || "Freelancer"}
+        size={avatarSize}
+        fallbackFontSize={compact ? 16 : 18}
+      />
       <div className="min-w-0 space-y-0.5">
         <p className={cn("truncate font-semibold text-indigo-950", titleSize)}>
           {freelancer.fullName || "Freelancer"}

@@ -14,6 +14,7 @@ import {
 } from "@/components/projects/enhancement-thread";
 import { ProjectCreateForm } from "@/components/projects/project-create-form";
 import { ProjectUpdateForm } from "@/components/projects/project-update-form";
+import { formatBudgetRange } from "@/lib/format";
 import Link from "next/link";
 
 type ClientPageProps = { searchParams: Promise<{ error?: string }> };
@@ -27,7 +28,7 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
   const { data: projects } = await supabase
     .from("projects")
     .select(
-      "id, title, description, status, budget_type, budget_min, budget_max, deadline, attachment_path, assigned_freelancer_id, created_at",
+      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, deadline, attachment_path, assigned_freelancer_id, created_at",
     )
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
@@ -137,7 +138,8 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Budget: {project.budget_type ?? "-"} | {project.budget_min ?? 0} - {project.budget_max ?? 0}
+                  Budget ({project.budget_type ?? "—"}):{" "}
+                  {formatBudgetRange(project.budget_min, project.budget_max, project.budget_currency)}
                 </p>
                 {project.attachment_path ? (
                   <div className="mt-2">
@@ -234,6 +236,7 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                     id: project.id,
                     title: project.title,
                     description: project.description,
+                    budget_currency: project.budget_currency,
                     budget_min: project.budget_min,
                     budget_max: project.budget_max,
                     deadline: project.deadline,

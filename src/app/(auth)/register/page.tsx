@@ -31,6 +31,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           />
           <input
             name="phone"
+            required
             placeholder="Phone"
             className="w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
           />

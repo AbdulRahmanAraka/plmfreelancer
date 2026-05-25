@@ -12,6 +12,9 @@ import {
   EnhancementThread,
   type EnhancementMessage,
 } from "@/components/projects/enhancement-thread";
+import { formatBudgetRange } from "@/lib/format";
+import { getFreelancerProfileStatus } from "@/server/services/freelancer-profile-status.service";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 type FreelancerPageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -44,7 +47,7 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
 
   const { data: openProjects } = await supabase
     .from("projects")
-    .select("id, title, description, budget_type, budget_min, budget_max, status, deadline, attachment_path")
+    .select("id, title, description, budget_type, budget_currency, budget_min, budget_max, status, deadline, attachment_path")
     .in("status", ["open", "assigned", "in_progress"])
     .order("created_at", { ascending: false })
     .limit(20);
@@ -106,6 +109,8 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
     freelancerProfileImageUrl = data?.signedUrl ?? null;
   }
 
+  const profileStatus = await getFreelancerProfileStatus(freelancerId);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
@@ -122,6 +127,72 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
           </Link>
         </div>
       </div>
+
+      {!profileStatus.isComplete ? (
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-orange-50 shadow-sm">
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <h2 className="text-base font-bold text-amber-900 sm:text-lg">
+                Complete your profile to start applying
+              </h2>
+              <p className="text-sm text-amber-900/80">
+                You can browse open projects below, but you must finish the
+                fields marked below before the Apply button is unlocked.
+              </p>
+              <ul className="flex flex-wrap gap-1.5 pt-1">
+                {profileStatus.missing.map((field) => (
+                  <li
+                    key={field}
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="shrink-0">
+              <Link
+                href="/freelancer/profile"
+                className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-md"
+              >
+                Complete Profile
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-3">
         <Card title="Applications Sent">
           <p className="text-3xl font-bold text-indigo-700">{appliedCount}</p>
@@ -136,18 +207,12 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
 
       <Card title="Introduction" description="Your public freelancer profile summary">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          {freelancerProfileImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={freelancerProfileImageUrl}
-              alt="Freelancer profile"
-              className="h-20 w-20 rounded-full border border-border object-cover"
-            />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-indigo-50 text-xl font-bold text-indigo-700">
-              {(profile?.full_name ?? "F").slice(0, 1).toUpperCase()}
-            </div>
-          )}
+          <ProfileAvatar
+            src={freelancerProfileImageUrl}
+            alt={profile?.full_name || "Freelancer profile"}
+            size={80}
+            fallbackFontSize={22}
+          />
           <div className="space-y-1">
             <p className="text-lg font-semibold text-indigo-950">
               {freelancerProfile?.professional_title || "Freelancer"}
@@ -184,7 +249,8 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Budget: {project.budget_type ?? "-"} | {project.budget_min ?? 0} - {project.budget_max ?? 0}
+                    Budget ({project.budget_type ?? "—"}):{" "}
+                    {formatBudgetRange(project.budget_min, project.budget_max, project.budget_currency)}
                   </p>
                   {signedUrl ? (
                     <Link
@@ -200,6 +266,27 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                       <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs capitalize text-emerald-800">
                         Application: {myStatus.replace("_", " ")}
                       </span>
+                    ) : !profileStatus.isComplete ? (
+                      <Link
+                        href="/freelancer/profile"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+                      >
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        Complete profile to apply
+                      </Link>
                     ) : (
                       <form action={applyToProjectAction} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="project_id" value={project.id} />

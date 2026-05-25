@@ -2,11 +2,55 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import { normalizePhone } from "@/lib/utils";
 
 function getString(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+async function findUserIdByEmail(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  email: string,
+): Promise<string | null> {
+  const target = normalizeEmail(email);
+  let page = 1;
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error || !data) return null;
+    const match = data.users.find(
+      (u) => (u.email ?? "").toLowerCase() === target,
+    );
+    if (match) return match.id;
+    if (data.users.length < 200) return null;
+    page += 1;
+    if (page > 50) return null;
+  }
+}
+
+/**
+ * Find any profile whose stored phone normalizes to the same digit-only
+ * sequence as the supplied input. Delegates to the Postgres helper
+ * find_profile_id_by_phone so the comparison happens server-side using
+ * the same normalization rule as the UNIQUE index.
+ */
+async function findUserIdByPhone(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  phone: string,
+): Promise<string | null> {
+  if (!normalizePhone(phone)) return null;
+  const { data } = await admin.rpc("find_profile_id_by_phone", { p: phone });
+  if (!data) return null;
+  return typeof data === "string" ? data : null;
 }
 
 export async function signInAction(formData: FormData) {
@@ -50,7 +94,7 @@ export async function signUpAction(formData: FormData) {
   const confirmPassword = getString(formData, "confirm_password");
   const role = getString(formData, "role");
 
-  if (!fullName || !email || !password || !confirmPassword || !role) {
+  if (!fullName || !email || !phone || !password || !confirmPassword || !role) {
     redirect("/register?error=Please+fill+all+required+fields");
   }
 
@@ -62,8 +106,18 @@ export async function signUpAction(formData: FormData) {
     redirect("/register?error=Password+confirmation+does+not+match");
   }
 
+  const admin = createSupabaseAdminClient();
+
+  if (await findUserIdByEmail(admin, email)) {
+    redirect("/register?error=An+account+with+this+email+already+exists");
+  }
+
+  if (await findUserIdByPhone(admin, phone)) {
+    redirect("/register?error=An+account+with+this+phone+number+already+exists");
+  }
+
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -77,7 +131,26 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
+    const lower = error.message.toLowerCase();
+    if (
+      lower.includes("already registered") ||
+      lower.includes("user already") ||
+      lower.includes("duplicate")
+    ) {
+      redirect("/register?error=An+account+with+this+email+already+exists");
+    }
+    if (lower.includes("profiles_phone_key") || lower.includes("phone")) {
+      redirect("/register?error=An+account+with+this+phone+number+already+exists");
+    }
     redirect(`/register?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (
+    data?.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    redirect("/register?error=An+account+with+this+email+already+exists");
   }
 
   redirect("/login?message=Account+created.+Please+check+your+email.");

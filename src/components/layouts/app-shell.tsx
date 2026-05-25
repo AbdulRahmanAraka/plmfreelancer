@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { signOutAction } from "@/app/(auth)/actions";
 import { markNotificationReadAction } from "@/app/(app)/actions";
-import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/layouts/sign-out-button";
 
 type ShellRole = "client" | "freelancer" | "admin";
 
@@ -65,11 +64,7 @@ export function AppShell({
           <div className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-indigo-900">
             Notifications: {unreadCount} unread
           </div>
-          <form action={signOutAction}>
-            <Button type="submit" variant="secondary">
-              Sign Out
-            </Button>
-          </form>
+          <SignOutButton />
         </div>
         <div className="mb-4 rounded-xl border border-border bg-white p-3">
           {notifications.length === 0 ? (

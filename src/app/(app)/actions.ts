@@ -6,7 +6,23 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserId, requireRole } from "@/lib/auth/session";
 import { sendUserEmail } from "@/server/services/email.service";
+import { getFreelancerProfileStatus } from "@/server/services/freelancer-profile-status.service";
 import { env } from "@/lib/env";
+import { normalizePhone } from "@/lib/utils";
+
+/**
+ * Return the user_id whose stored phone normalizes to the same digit-only
+ * sequence as `phone`, or null if no match. Calls a Postgres helper so the
+ * comparison matches the unique index on the column.
+ */
+async function findProfileIdByNormalizedPhone(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  phone: string,
+): Promise<string | null> {
+  if (!normalizePhone(phone)) return null;
+  const { data } = await admin.rpc("find_profile_id_by_phone", { p: phone });
+  return typeof data === "string" ? data : null;
+}
 
 function asText(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -93,6 +109,8 @@ export async function createProjectAction(formData: FormData) {
   const title = asText(formData, "title");
   const description = asText(formData, "description");
   const budgetType = asText(formData, "budget_type");
+  const budgetCurrencyRaw = asText(formData, "budget_currency");
+  const budgetCurrency = budgetCurrencyRaw === "USD" ? "USD" : "INR";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
   const deadline = asText(formData, "deadline");
@@ -100,6 +118,22 @@ export async function createProjectAction(formData: FormData) {
 
   if (!title || !description) {
     redirect("/client?error=Title+and+description+are+required");
+  }
+
+  if (!budgetType || !["hourly", "fixed"].includes(budgetType)) {
+    redirect("/client?error=Please+select+a+budget+type");
+  }
+
+  if (budgetMin === null || budgetMax === null) {
+    redirect("/client?error=Please+enter+both+min+and+max+budget");
+  }
+
+  if (budgetMin > budgetMax) {
+    redirect("/client?error=Min+budget+cannot+be+greater+than+max+budget");
+  }
+
+  if (!deadline) {
+    redirect("/client?error=Please+pick+a+deadline");
   }
 
   const {
@@ -117,10 +151,11 @@ export async function createProjectAction(formData: FormData) {
       client_id: clientId,
       title,
       description,
-      budget_type: budgetType || null,
+      budget_type: budgetType,
+      budget_currency: budgetCurrency,
       budget_min: budgetMin,
       budget_max: budgetMax,
-      deadline: deadline || null,
+      deadline,
       contact_name: user?.user_metadata?.full_name ?? "Client",
       contact_email: user?.email ?? "",
       attachment_path: attachmentPath,
@@ -154,6 +189,8 @@ export async function updateProjectAction(formData: FormData) {
   const projectId = Number(asText(formData, "project_id"));
   const title = asText(formData, "title");
   const description = asText(formData, "description");
+  const budgetCurrencyRaw = asText(formData, "budget_currency");
+  const budgetCurrency = budgetCurrencyRaw === "USD" ? "USD" : "INR";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
   const deadline = asText(formData, "deadline");
@@ -163,19 +200,33 @@ export async function updateProjectAction(formData: FormData) {
     redirect("/client?error=Project+update+payload+is+invalid");
   }
 
+  if (budgetMin === null || budgetMax === null) {
+    redirect("/client?error=Please+enter+both+min+and+max+budget");
+  }
+
+  if (budgetMin > budgetMax) {
+    redirect("/client?error=Min+budget+cannot+be+greater+than+max+budget");
+  }
+
+  if (!deadline) {
+    redirect("/client?error=Please+pick+a+deadline");
+  }
+
   const updatePayload: {
     title: string;
     description: string;
-    budget_min: number | null;
-    budget_max: number | null;
-    deadline: string | null;
+    budget_currency: string;
+    budget_min: number;
+    budget_max: number;
+    deadline: string;
     attachment_path?: string;
   } = {
     title,
     description,
+    budget_currency: budgetCurrency,
     budget_min: budgetMin,
     budget_max: budgetMax,
-    deadline: deadline || null,
+    deadline,
   };
 
   if (submittedPath) {
@@ -249,6 +300,13 @@ export async function applyToProjectAction(formData: FormData) {
 
   if (!projectId) {
     redirect("/freelancer?error=Project+selection+is+invalid");
+  }
+
+  const status = await getFreelancerProfileStatus(freelancerId);
+  if (!status.isComplete) {
+    redirect(
+      "/freelancer?error=Please+complete+your+profile+before+applying+to+projects",
+    );
   }
 
   const { data: project } = await supabase
@@ -786,26 +844,46 @@ export async function updateClientProfileAction(formData: FormData) {
   const companyName = asText(formData, "company_name");
   const address = asText(formData, "address");
 
+  if (!fullName || !phone || !companyName || !address) {
+    redirect("/client/profile?error=Please+fill+all+required+fields");
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const phoneOwnerId = await findProfileIdByNormalizedPhone(adminClient, phone);
+
+  if (phoneOwnerId && phoneOwnerId !== userId) {
+    redirect("/client/profile?error=This+phone+number+is+already+used+by+another+account");
+  }
+
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, phone: phone || null })
+    .update({ full_name: fullName, phone })
     .eq("user_id", userId);
 
   if (profileError) {
-    redirect(`/client?error=${encodeURIComponent(profileError.message)}`);
+    const msg = profileError.message.toLowerCase();
+    if (
+      msg.includes("profiles_phone_key") ||
+      msg.includes("phone_normalized") ||
+      msg.includes("phone")
+    ) {
+      redirect("/client/profile?error=This+phone+number+is+already+used+by+another+account");
+    }
+    redirect(`/client/profile?error=${encodeURIComponent(profileError.message)}`);
   }
 
   const { error: clientError } = await supabase.from("client_profiles").upsert({
     user_id: userId,
-    company_name: companyName || null,
-    address: address || null,
+    company_name: companyName,
+    address,
   });
 
   if (clientError) {
-    redirect(`/client?error=${encodeURIComponent(clientError.message)}`);
+    redirect(`/client/profile?error=${encodeURIComponent(clientError.message)}`);
   }
 
   revalidatePath("/client");
+  revalidatePath("/client/profile");
 }
 
 export async function updateFreelancerProfileAction(formData: FormData) {
@@ -838,24 +916,63 @@ export async function updateFreelancerProfileAction(formData: FormData) {
   const software =
     checkboxSoftware.length > 0 ? [...new Set(checkboxSoftware.map((s) => s.trim()).filter(Boolean))] : splitCsv(asText(formData, "software_csv"));
 
+  if (
+    !fullName ||
+    !phone ||
+    !country ||
+    !professionalTitle ||
+    experienceYears === null ||
+    hourlyRate === null ||
+    !availability
+  ) {
+    redirect("/freelancer/profile?error=Please+fill+all+required+fields");
+  }
+
+  if (!["Full time", "Part time"].includes(availability)) {
+    redirect("/freelancer/profile?error=Availability+must+be+Full+time+or+Part+time");
+  }
+
+  if (skills.length === 0) {
+    redirect("/freelancer/profile?error=Please+select+at+least+one+skill");
+  }
+
+  if (software.length === 0) {
+    redirect("/freelancer/profile?error=Please+select+at+least+one+software");
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const phoneOwnerId = await findProfileIdByNormalizedPhone(adminClient, phone);
+
+  if (phoneOwnerId && phoneOwnerId !== userId) {
+    redirect("/freelancer/profile?error=This+phone+number+is+already+used+by+another+account");
+  }
+
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, phone: phone || null })
+    .update({ full_name: fullName, phone })
     .eq("user_id", userId);
   if (profileError) {
+    const msg = profileError.message.toLowerCase();
+    if (
+      msg.includes("profiles_phone_key") ||
+      msg.includes("phone_normalized") ||
+      msg.includes("phone")
+    ) {
+      redirect("/freelancer/profile?error=This+phone+number+is+already+used+by+another+account");
+    }
     redirect(`/freelancer/profile?error=${encodeURIComponent(profileError.message)}`);
   }
 
   const { error: freelancerError } = await supabase.from("freelancer_profiles").upsert({
     user_id: userId,
-    country: country || null,
+    country,
     state: state || null,
     hourly_rate: hourlyRate,
     plm_experience_years: experienceYears,
     plm_experience_months: experienceMonths,
-    professional_title: professionalTitle || null,
+    professional_title: professionalTitle,
     introduction: introduction || null,
-    availability: availability || null,
+    availability,
     notice_period: noticePeriod || null,
     portfolio_url: portfolioUrl || null,
   });

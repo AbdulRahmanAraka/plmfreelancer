@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getCurrentUserId,
@@ -74,7 +75,6 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
 
   const skills = (skillRows ?? []).map((row) => row.skill);
   const software = (softwareRows ?? []).map((row) => row.software);
-  const initial = (profile.full_name || "F").slice(0, 1).toUpperCase();
 
   const experienceLabel = (() => {
     const years = freelancerProfile?.plm_experience_years ?? 0;
@@ -87,7 +87,7 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
   })();
 
   const rateLabel = freelancerProfile?.hourly_rate
-    ? `${Number(freelancerProfile.hourly_rate).toLocaleString()} / hr${
+    ? `₹${Number(freelancerProfile.hourly_rate).toLocaleString("en-IN")} / hr${
         freelancerProfile.rate_negotiable ? " (negotiable)" : ""
       }`
     : "Not specified";
@@ -117,18 +117,12 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
 
       <Card>
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          {profileImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={profileImageUrl}
-              alt={profile.full_name}
-              className="h-28 w-28 shrink-0 rounded-full border border-border object-cover"
-            />
-          ) : (
-            <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border border-border bg-indigo-50 text-3xl font-bold text-indigo-700">
-              {initial}
-            </div>
-          )}
+          <ProfileAvatar
+            src={profileImageUrl}
+            alt={profile.full_name || "Freelancer"}
+            size={112}
+            fallbackFontSize={32}
+          />
           <div className="min-w-0 space-y-1">
             <h1 className="truncate text-2xl font-bold text-indigo-950">
               {profile.full_name || "Freelancer"}

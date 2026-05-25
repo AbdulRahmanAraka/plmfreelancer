@@ -5,50 +5,101 @@ import { useFormStatus } from "react-dom";
 import { createProjectAction } from "@/app/(app)/actions";
 import { ProjectAttachmentField } from "./project-attachment-field";
 
+const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700";
+const inputClass =
+  "w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";
+const required = <span className="text-rose-500">*</span>;
+
 export function ProjectCreateForm() {
   const [isUploading, setIsUploading] = useState(false);
 
   return (
     <form action={createProjectAction} className="grid gap-3 md:grid-cols-2">
-      <input
-        name="title"
-        placeholder="Project title"
-        required
-        className="rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500 md:col-span-2"
-      />
-      <textarea
-        name="description"
-        placeholder="Project description"
-        required
-        className="min-h-28 rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500 md:col-span-2"
-      />
-      <select
-        name="budget_type"
-        className="rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
-      >
-        <option value="">Budget Type</option>
-        <option value="hourly">Hourly</option>
-        <option value="fixed">Fixed</option>
-      </select>
-      <input
-        name="deadline"
-        type="date"
-        className="rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
-      />
-      <input
-        name="budget_min"
-        type="number"
-        min={0}
-        placeholder="Min budget"
-        className="rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
-      />
-      <input
-        name="budget_max"
-        type="number"
-        min={0}
-        placeholder="Max budget"
-        className="rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
-      />
+      <div className="md:col-span-2">
+        <label className={labelClass}>
+          Project title {required}
+        </label>
+        <input
+          name="title"
+          required
+          placeholder="e.g. Migrate BOM from Windchill to Teamcenter"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className={labelClass}>
+          Project description {required}
+        </label>
+        <textarea
+          name="description"
+          placeholder="Describe scope, deliverables, integrations, current PLM, etc."
+          required
+          className={`${inputClass} min-h-28`}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Budget type {required}
+        </label>
+        <select name="budget_type" required className={inputClass}>
+          <option value="">Select budget type</option>
+          <option value="hourly">Hourly</option>
+          <option value="fixed">Fixed</option>
+        </select>
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Currency {required}
+        </label>
+        <select name="budget_currency" required defaultValue="INR" className={inputClass}>
+          <option value="INR">Rupees (INR) ₹</option>
+          <option value="USD">Dollars (USD) $</option>
+        </select>
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Min budget {required}
+        </label>
+        <input
+          name="budget_min"
+          type="number"
+          min={0}
+          required
+          placeholder="e.g. 10000"
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Max budget {required}
+        </label>
+        <input
+          name="budget_max"
+          type="number"
+          min={0}
+          required
+          placeholder="e.g. 50000"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className={labelClass}>
+          Deadline {required}
+        </label>
+        <input
+          name="deadline"
+          type="date"
+          required
+          className={inputClass}
+        />
+      </div>
+
       <div className="md:col-span-2">
         <ProjectAttachmentField onUploadingChange={setIsUploading} />
       </div>

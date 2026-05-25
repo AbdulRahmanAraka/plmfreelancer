@@ -3,5 +3,5 @@ export const LEGAL = {
   contactEmail: "contact@plmfreelancer.com",
   contactAddress: "Your registered business address, City, State, India",
   jurisdiction: "the courts of India",
-  effectiveDate: "April 27, 2026",
+  effectiveDate: "May 26, 2026",
 };

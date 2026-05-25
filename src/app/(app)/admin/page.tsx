@@ -8,6 +8,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/session";
 import { loadFreelancerIntros } from "@/server/services/freelancer-intro.service";
 import { cn } from "@/lib/utils";
+import { formatBudgetRange } from "@/lib/format";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,7 @@ type ProjectRow = {
   description: string;
   status: string;
   budget_type: string | null;
+  budget_currency: string | null;
   budget_min: number | null;
   budget_max: number | null;
   deadline: string | null;
@@ -51,16 +54,12 @@ function formatDate(value: string | null | undefined): string {
 
 function formatBudget(
   type: string | null,
+  currency: string | null,
   min: number | null,
   max: number | null,
 ): string {
   if (min == null && max == null) return "Not specified";
-  const range =
-    min != null && max != null
-      ? `₹${min.toLocaleString()} – ₹${max.toLocaleString()}`
-      : min != null
-        ? `₹${min.toLocaleString()}+`
-        : `up to ₹${max!.toLocaleString()}`;
+  const range = formatBudgetRange(min, max, currency);
   return type ? `${range} (${type.replace("_", " ")})` : range;
 }
 
@@ -93,7 +92,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
   const { data: projectsRaw, error: projectsError } = await admin
     .from("projects")
     .select(
-      "id, title, description, status, budget_type, budget_min, budget_max, deadline, client_id, assigned_freelancer_id, attachment_path, created_at",
+      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, deadline, client_id, assigned_freelancer_id, attachment_path, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -323,6 +322,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                     <dd className="mt-0.5 text-indigo-950">
                       {formatBudget(
                         project.budget_type,
+                        project.budget_currency,
                         project.budget_min,
                         project.budget_max,
                       )}
@@ -376,27 +376,18 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                           intro?.professionalTitle ?? freelancerTitleMap.get(app.freelancer_id);
                         const applicantIntroText = intro?.introduction;
                         const applicantImageUrl = intro?.profileImageUrl;
-                        const applicantInitial = applicantName.slice(0, 1).toUpperCase();
                         const isAssignedAlready =
                           project.assigned_freelancer_id === app.freelancer_id;
                         return (
                           <li key={app.id}>
                             <article className="rounded-lg border border-border bg-white p-3">
                               <div className="flex flex-wrap items-start gap-3">
-                                <div className="shrink-0">
-                                  {applicantImageUrl ? (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                    <img
-                                      src={applicantImageUrl}
-                                      alt={applicantName}
-                                      className="h-14 w-14 rounded-full border border-border object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-indigo-50 text-lg font-bold text-indigo-700">
-                                      {applicantInitial}
-                                    </div>
-                                  )}
-                                </div>
+                                <ProfileAvatar
+                                  src={applicantImageUrl}
+                                  alt={applicantName}
+                                  size={56}
+                                  fallbackFontSize={18}
+                                />
                                 <div className="min-w-0 flex-1">
                                   <Link
                                     href={`/freelancers/${app.freelancer_id}`}
