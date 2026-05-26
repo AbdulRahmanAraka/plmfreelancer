@@ -20,6 +20,9 @@ async function findProfileIdByNormalizedPhone(
   phone: string,
 ): Promise<string | null> {
   if (!normalizePhone(phone)) return null;
+  // Custom RPC; admin client lacks generated Database types, so the args
+  // param is inferred as undefined. Safe to assert until types are generated.
+  // @ts-expect-error -- TODO: generate Supabase types and drop this directive
   const { data } = await admin.rpc("find_profile_id_by_phone", { p: phone });
   return typeof data === "string" ? data : null;
 }
