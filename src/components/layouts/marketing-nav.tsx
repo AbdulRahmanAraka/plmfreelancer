@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { SiteLogoLink } from "@/components/layouts/site-header";
 import { cn } from "@/lib/utils";
 
 type NavLink = {
@@ -22,9 +22,7 @@ export function MarketingNav() {
   return (
     <header className="sticky top-0 z-20 border-b border-border/70 bg-white/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" aria-label="PLM Freelancer home">
-          <BrandMark />
-        </Link>
+        <SiteLogoLink height={40} />
         <nav className="flex items-center gap-1 sm:gap-2">
           {navLinks.map((link) => {
             const isActive =

@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { SiteHeaderBar } from "@/components/layouts/site-header";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="flex min-h-screen flex-col">
+      <SiteHeaderBar />
+      <div className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-xs font-semibold uppercase tracking-widest text-indigo-700">
         Error 404
       </p>
@@ -25,6 +28,7 @@ export default function NotFound() {
         >
           Sign in
         </Link>
+      </div>
       </div>
     </div>
   );

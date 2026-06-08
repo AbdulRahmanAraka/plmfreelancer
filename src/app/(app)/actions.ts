@@ -93,6 +93,13 @@ async function createNotification(input: {
     message: input.message,
   });
 
+  // Skip email when the actor notifies themselves (e.g. creator of a project,
+  // freelancer toggling their own status). The in-app row above is enough
+  // and email would be pure noise / wasted quota.
+  if (input.actorId && input.actorId === input.recipientId) {
+    return;
+  }
+
   const cta = input.emailCta ?? CTA_BY_KIND[input.kind];
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   await sendUserEmail(input.recipientId, {
@@ -112,8 +119,7 @@ export async function createProjectAction(formData: FormData) {
   const title = asText(formData, "title");
   const description = asText(formData, "description");
   const budgetType = asText(formData, "budget_type");
-  const budgetCurrencyRaw = asText(formData, "budget_currency");
-  const budgetCurrency = budgetCurrencyRaw === "USD" ? "USD" : "INR";
+  const budgetCurrency = "USD";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
   const deadline = asText(formData, "deadline");
@@ -192,8 +198,7 @@ export async function updateProjectAction(formData: FormData) {
   const projectId = Number(asText(formData, "project_id"));
   const title = asText(formData, "title");
   const description = asText(formData, "description");
-  const budgetCurrencyRaw = asText(formData, "budget_currency");
-  const budgetCurrency = budgetCurrencyRaw === "USD" ? "USD" : "INR";
+  const budgetCurrency = "USD";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
   const deadline = asText(formData, "deadline");
@@ -445,6 +450,22 @@ export async function adminAssignProjectToFreelancerAction(formData: FormData) {
     redirect("/admin?error=Selected+user+is+not+a+freelancer");
   }
 
+  // Idempotency guard: if the project is already assigned to this freelancer,
+  // skip the update + notifications. Prevents duplicate email storms when the
+  // admin re-submits the form or clicks Assign multiple times.
+  const { data: currentProject } = await adminClient
+    .from("projects")
+    .select("assigned_freelancer_id")
+    .eq("id", projectId)
+    .single();
+
+  if (currentProject?.assigned_freelancer_id === freelancerId) {
+    revalidatePath("/admin");
+    revalidatePath("/freelancer");
+    revalidatePath("/client");
+    redirect("/admin?error=Project+is+already+assigned+to+this+freelancer");
+  }
+
   const { error: projectError } = await adminClient
     .from("projects")
     .update({
@@ -590,6 +611,20 @@ export async function assignFreelancerAction(formData: FormData) {
 
   if (!projectId || !freelancerId || !applicationId) {
     redirect("/admin?error=Assignment+payload+is+invalid");
+  }
+
+  // Idempotency guard (see adminAssignProjectToFreelancerAction for rationale).
+  const { data: currentProject } = await supabase
+    .from("projects")
+    .select("assigned_freelancer_id")
+    .eq("id", projectId)
+    .single();
+
+  if (currentProject?.assigned_freelancer_id === freelancerId) {
+    revalidatePath("/admin");
+    revalidatePath("/freelancer");
+    revalidatePath("/client");
+    redirect("/admin?error=Project+is+already+assigned+to+this+freelancer");
   }
 
   const { error: projectError } = await supabase
@@ -887,6 +922,7 @@ export async function updateClientProfileAction(formData: FormData) {
 
   revalidatePath("/client");
   revalidatePath("/client/profile");
+  redirect("/client/profile?message=Profile+saved+successfully");
 }
 
 export async function updateFreelancerProfileAction(formData: FormData) {
@@ -904,7 +940,9 @@ export async function updateFreelancerProfileAction(formData: FormData) {
   const professionalTitle = asText(formData, "professional_title");
   const introduction = asText(formData, "introduction");
   const availability = asText(formData, "availability");
-  const noticePeriod = asText(formData, "notice_period");
+  const lookingForFullTimeJob = asText(formData, "looking_for_full_time_job");
+  const lookingForJob = lookingForFullTimeJob === "yes";
+  const noticePeriod = lookingForJob ? asText(formData, "notice_period") : "";
   const portfolioUrl = asText(formData, "portfolio_url");
   const profileImage = formData.get("profile_image");
   const checkboxSkills = formData
@@ -933,6 +971,14 @@ export async function updateFreelancerProfileAction(formData: FormData) {
 
   if (!["Full time", "Part time"].includes(availability)) {
     redirect("/freelancer/profile?error=Availability+must+be+Full+time+or+Part+time");
+  }
+
+  if (!["yes", "no"].includes(lookingForFullTimeJob)) {
+    redirect("/freelancer/profile?error=Please+answer+whether+you+are+looking+for+a+full-time+job");
+  }
+
+  if (lookingForJob && !noticePeriod) {
+    redirect("/freelancer/profile?error=Please+enter+your+notice+period");
   }
 
   if (skills.length === 0) {
@@ -976,7 +1022,8 @@ export async function updateFreelancerProfileAction(formData: FormData) {
     professional_title: professionalTitle,
     introduction: introduction || null,
     availability,
-    notice_period: noticePeriod || null,
+    looking_for_job: lookingForJob,
+    notice_period: lookingForJob ? noticePeriod : null,
     portfolio_url: portfolioUrl || null,
   });
   if (freelancerError) {
@@ -1027,6 +1074,7 @@ export async function updateFreelancerProfileAction(formData: FormData) {
 
   revalidatePath("/freelancer");
   revalidatePath("/freelancer/profile");
+  redirect("/freelancer/profile?message=Profile+saved+successfully");
 }
 
 export async function markNotificationReadAction(formData: FormData) {

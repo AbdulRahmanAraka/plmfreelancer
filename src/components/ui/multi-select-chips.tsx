@@ -7,7 +7,10 @@ type MultiSelectChipsProps = {
   title: string;
   name: string;
   options: string[];
-  initialSelected: string[];
+  initialSelected?: string[];
+  /** Controlled mode — when set, parent owns selection state (e.g. profile draft). */
+  selected?: string[];
+  onSelectedChange?: (selected: string[]) => void;
   inputPlaceholder?: string;
   addButtonLabel?: string;
 };
@@ -16,11 +19,24 @@ export function MultiSelectChips({
   title,
   name,
   options,
-  initialSelected,
+  initialSelected = [],
+  selected: controlledSelected,
+  onSelectedChange,
   inputPlaceholder = "Type and press Enter to add your own",
   addButtonLabel = "Add",
 }: MultiSelectChipsProps) {
-  const [selected, setSelected] = useState<string[]>(initialSelected);
+  const [internalSelected, setInternalSelected] = useState<string[]>(initialSelected);
+  const isControlled = controlledSelected !== undefined;
+  const selected = isControlled ? controlledSelected : internalSelected;
+
+  const setSelected = (next: string[] | ((prev: string[]) => string[])) => {
+    const resolved = typeof next === "function" ? next(selected) : next;
+    if (isControlled) {
+      onSelectedChange?.(resolved);
+    } else {
+      setInternalSelected(resolved);
+    }
+  };
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 

@@ -13,6 +13,29 @@ function getResendClient(): Resend | null {
   return cachedClient;
 }
 
+// Resend's default rate limit is 2 requests/second across all sends. A single
+// admin action can fan out to multiple recipients (e.g. one notification per
+// admin in `applyToProjectAction`) and fire emails almost simultaneously,
+// which can trip a 429 `rate_limit_exceeded`. We serialize sends through a
+// promise chain with a minimum gap to stay safely below the limit.
+const MIN_SEND_INTERVAL_MS = 600;
+let lastSendAt = 0;
+let throttleQueue: Promise<void> = Promise.resolve();
+
+function throttleSend(): Promise<void> {
+  const next = throttleQueue.then(async () => {
+    const elapsed = Date.now() - lastSendAt;
+    const wait = MIN_SEND_INTERVAL_MS - elapsed;
+    if (wait > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, wait));
+    }
+    lastSendAt = Date.now();
+  });
+  // Swallow rejections so one failure doesn't break the queue for everyone.
+  throttleQueue = next.catch(() => undefined);
+  return next;
+}
+
 export async function getUserEmail(userId: string): Promise<string | null> {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) return null;
   try {
@@ -94,7 +117,8 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
   }
 
   try {
-    const { error } = await client.emails.send({
+    await throttleSend();
+    const { data, error } = await client.emails.send({
       from: env.EMAIL_FROM as string,
       to: input.to,
       subject: input.subject,
@@ -102,12 +126,41 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
       text: buildText(input),
     });
     if (error) {
-      console.warn("[email] resend reported error", error);
+      const e = error as {
+        name?: string;
+        message?: string;
+        statusCode?: number;
+      };
+      console.warn("[email] resend reported error", {
+        name: e.name,
+        statusCode: e.statusCode,
+        message: e.message,
+        to: input.to,
+        subject: input.subject,
+      });
       return false;
     }
+    console.info("[email] sent", {
+      id: data?.id,
+      to: input.to,
+      subject: input.subject,
+    });
     return true;
   } catch (err) {
-    console.warn("[email] send threw", err);
+    const e = err as {
+      name?: string;
+      message?: string;
+      statusCode?: number;
+      cause?: unknown;
+    };
+    console.warn("[email] send threw", {
+      name: e?.name,
+      statusCode: e?.statusCode,
+      message: e?.message,
+      cause: e?.cause,
+      to: input.to,
+      subject: input.subject,
+    });
     return false;
   }
 }

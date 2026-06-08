@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
 import { updateProjectAction } from "@/app/(app)/actions";
 import { ProjectAttachmentField } from "./project-attachment-field";
 
@@ -39,18 +39,7 @@ export function ProjectUpdateForm({ project }: ProjectUpdateFormProps) {
         />
       </div>
 
-      <div>
-        <label className={labelClass}>Currency *</label>
-        <select
-          name="budget_currency"
-          required
-          defaultValue={project.budget_currency ?? "INR"}
-          className={inputClass}
-        >
-          <option value="INR">INR ₹</option>
-          <option value="USD">USD $</option>
-        </select>
-      </div>
+      <input type="hidden" name="budget_currency" value="USD" />
 
       <div>
         <label className={labelClass}>Deadline *</label>
@@ -64,7 +53,7 @@ export function ProjectUpdateForm({ project }: ProjectUpdateFormProps) {
       </div>
 
       <div>
-        <label className={labelClass}>Min budget *</label>
+        <label className={labelClass}>Min budget (USD) *</label>
         <input
           name="budget_min"
           type="number"
@@ -77,7 +66,7 @@ export function ProjectUpdateForm({ project }: ProjectUpdateFormProps) {
       </div>
 
       <div>
-        <label className={labelClass}>Max budget *</label>
+        <label className={labelClass}>Max budget (USD) *</label>
         <input
           name="budget_max"
           type="number"
@@ -111,15 +100,15 @@ export function ProjectUpdateForm({ project }: ProjectUpdateFormProps) {
 }
 
 function SubmitButton({ disabledExtra }: { disabledExtra: boolean }) {
-  const { pending } = useFormStatus();
-  const disabled = pending || disabledExtra;
   return (
-    <button
+    <Button
       type="submit"
-      disabled={disabled}
-      className="w-full rounded-lg bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+      size="sm"
+      disabled={disabledExtra}
+      loadingText="Saving..."
+      className="w-full"
     >
-      {pending ? "Saving..." : disabledExtra ? "Waiting for upload..." : "Save"}
-    </button>
+      {disabledExtra ? "Waiting for upload..." : "Save"}
+    </Button>
   );
 }

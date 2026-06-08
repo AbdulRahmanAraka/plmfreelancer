@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { AuthAlert } from "@/components/ui/auth-alert";
+import { Button } from "@/components/ui/button";
 import { changePasswordAction } from "@/app/(auth)/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, requireAuth } from "@/lib/auth/session";
@@ -93,12 +94,9 @@ export default async function AccountSettingsPage({ searchParams }: AccountPageP
               className="w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-indigo-500"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
+          <Button type="submit" loadingText="Updating...">
             Update Password
-          </button>
+          </Button>
         </form>
       </Card>
 

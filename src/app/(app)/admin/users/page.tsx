@@ -87,7 +87,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       ? admin
           .from("freelancer_profiles")
           .select(
-            "user_id, professional_title, introduction, country, state, address, plm_experience_years, plm_experience_months, hourly_rate, availability, notice_period, portfolio_url, profile_image_path",
+            "user_id, professional_title, introduction, country, state, address, plm_experience_years, plm_experience_months, hourly_rate, availability, looking_for_job, notice_period, portfolio_url, profile_image_path",
           )
           .in("user_id", freelancerIds)
       : { data: [] as Array<Record<string, unknown>> },
@@ -122,6 +122,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     plm_experience_months: number | null;
     hourly_rate: number | string | null;
     availability: string | null;
+    looking_for_job: boolean | null;
     notice_period: string | null;
     portfolio_url: string | null;
     profile_image_path: string | null;
@@ -203,6 +204,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   ? Number(f.hourly_rate)
                   : f.hourly_rate,
             availability: f.availability,
+            looking_for_job: f.looking_for_job,
             notice_period: f.notice_period,
             portfolio_url: f.portfolio_url,
             profile_image_url: signedImageMap.get(p.user_id) ?? null,

@@ -1,8 +1,8 @@
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   addEnhancementMessageAction,
   clientDecisionAction,
-  deleteProjectAction,
 } from "@/app/(app)/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUserId, requireRole } from "@/lib/auth/session";
@@ -14,6 +14,7 @@ import {
 } from "@/components/projects/enhancement-thread";
 import { ProjectCreateForm } from "@/components/projects/project-create-form";
 import { ProjectUpdateForm } from "@/components/projects/project-update-form";
+import { DeleteProjectButton } from "@/components/projects/delete-project-button";
 import { formatBudgetRange } from "@/lib/format";
 import Link from "next/link";
 
@@ -180,22 +181,16 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                         placeholder="Describe the changes you need (required for enhancement)"
                         className="min-h-16 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
                       />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
-                      >
+                      <Button type="submit" variant="softWarning" size="xs" loadingText="Sending...">
                         Request Enhancement
-                      </button>
+                      </Button>
                     </form>
                     <form action={clientDecisionAction}>
                       <input type="hidden" name="project_id" value={project.id} />
                       <input type="hidden" name="decision" value="accepted" />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                      >
+                      <Button type="submit" variant="softSuccess" size="xs" loadingText="Accepting...">
                         Accept Delivery
-                      </button>
+                      </Button>
                     </form>
                   </div>
                 ) : null}
@@ -221,12 +216,9 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                           placeholder="Add a note for the freelancer"
                           className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
                         />
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
-                        >
+                        <Button type="submit" size="xs" loadingText="Sending...">
                           Send Note
-                        </button>
+                        </Button>
                       </form>
                     ) : null}
                   </div>
@@ -243,15 +235,9 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                     attachment_path: project.attachment_path,
                   }}
                 />
-                <form action={deleteProjectAction} className="mt-2">
-                  <input type="hidden" name="project_id" value={project.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700"
-                  >
-                    Delete Project
-                  </button>
-                </form>
+                <div className="mt-2">
+                  <DeleteProjectButton projectId={project.id} projectTitle={project.title} />
+                </div>
               </article>
               );
             })}

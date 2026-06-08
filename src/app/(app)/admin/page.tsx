@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   adminAssignProjectToFreelancerAction,
   adminUnassignProjectAction,
@@ -422,20 +423,16 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                     name="freelancer_id"
                                     value={app.freelancer_id}
                                   />
-                                  <button
+                                  <Button
                                     type="submit"
+                                    variant={isAssignedAlready ? "subtle" : "primary"}
+                                    size="sm"
                                     disabled={isAssignedAlready || !canAssign}
-                                    className={cn(
-                                      "rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
-                                      isAssignedAlready
-                                        ? "cursor-not-allowed bg-indigo-100 text-indigo-700"
-                                        : !canAssign
-                                          ? "cursor-not-allowed bg-slate-100 text-slate-500"
-                                          : "bg-indigo-700 text-white hover:bg-indigo-800",
-                                    )}
+                                    loadingText="Assigning..."
+                                    className="rounded-full px-3.5 py-1.5"
                                   >
                                     {isAssignedAlready ? "Assigned" : "Assign"}
-                                  </button>
+                                  </Button>
                                 </form>
                               </div>
 
@@ -514,9 +511,12 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                 {assignedName}
                               </p>
                             </div>
-                            <button
+                            <Button
                               type="submit"
-                              className="inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm transition hover:border-rose-400 hover:bg-rose-100"
+                              size="sm"
+                              variant="softDestructive"
+                              loadingText="Cancelling..."
+                              className="rounded-md border-rose-300 bg-white px-3 py-1.5 shadow-sm hover:border-rose-400 hover:bg-rose-100"
                             >
                               <svg
                                 width="14"
@@ -532,7 +532,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                 <path d="M18 6 6 18M6 6l12 12" />
                               </svg>
                               Cancel Assignment
-                            </button>
+                            </Button>
                           </form>
                         ) : null}
 
@@ -565,19 +565,19 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                         name="freelancer_id"
                                         value={f.user_id}
                                       />
-                                      <button
+                                      <Button
                                         type="submit"
+                                        variant={isCurrentlyAssigned ? "subtle" : "secondary"}
+                                        size="md"
                                         disabled={isCurrentlyAssigned}
-                                        className={cn(
-                                          "flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition",
-                                          isCurrentlyAssigned
-                                            ? "cursor-not-allowed border-indigo-200 bg-indigo-50 text-indigo-700"
-                                            : "border-border bg-white text-indigo-950 hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-sm",
-                                        )}
+                                        loadingText="Assigning..."
+                                        className="w-full rounded-md px-3 py-2 text-left shadow-none hover:border-indigo-400 hover:shadow-sm"
                                       >
                                         <span className="min-w-0 flex-1">
                                           <span className="flex items-center gap-2">
-                                            <span className="font-semibold">{f.full_name}</span>
+                                            <span className="text-sm font-semibold">
+                                              {f.full_name}
+                                            </span>
                                             {hasApplied ? (
                                               <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                                                 Applied
@@ -585,7 +585,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                             ) : null}
                                           </span>
                                           {f.professional_title ? (
-                                            <span className="block text-xs text-muted-foreground">
+                                            <span className="block text-xs font-normal text-muted-foreground">
                                               {f.professional_title}
                                             </span>
                                           ) : null}
@@ -600,7 +600,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                                         >
                                           {isCurrentlyAssigned ? "Assigned" : "Assign"}
                                         </span>
-                                      </button>
+                                      </Button>
                                     </form>
                                   </li>
                                 );

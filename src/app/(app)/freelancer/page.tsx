@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   addEnhancementMessageAction,
   applyToProjectAction,
@@ -296,12 +297,9 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                           placeholder="Short cover note (optional)"
                           className="min-w-64 rounded-lg border border-border px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
                         />
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                        >
+                        <Button type="submit" size="sm" loadingText="Applying...">
                           Apply
-                        </button>
+                        </Button>
                       </form>
                     )}
                   </div>
@@ -346,22 +344,26 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                 ) : (
                   <form action={updateFreelancerProjectStatusAction} className="mt-3 flex flex-wrap gap-2">
                     <input type="hidden" name="project_id" value={project.id} />
-                    <button
+                    <Button
                       type="submit"
                       name="status"
                       value="in_progress"
-                      className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700"
+                      variant="subtle"
+                      size="sm"
+                      loadingText="Updating..."
                     >
                       Mark In Progress
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
                       name="status"
                       value="completed"
-                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+                      variant="softSuccess"
+                      size="sm"
+                      loadingText="Updating..."
                     >
                       Mark Completed
-                    </button>
+                    </Button>
                   </form>
                 )}
 
@@ -386,12 +388,9 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                             placeholder="Reply to the client"
                             className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
                           />
-                          <button
-                            type="submit"
-                            className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
-                          >
+                          <Button type="submit" size="xs" variant="primary" loadingText="Sending...">
                             Send Reply
-                          </button>
+                          </Button>
                         </form>
                         <form action={freelancerResubmitAction} className="space-y-2 border-t border-amber-100 pt-2">
                           <input type="hidden" name="project_id" value={project.id} />
@@ -400,12 +399,9 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                             placeholder="Optional note: what you changed before re-submitting"
                             className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
                           />
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                          >
+                          <Button type="submit" size="xs" variant="softSuccess" loadingText="Re-submitting...">
                             Re-submit for Review
-                          </button>
+                          </Button>
                         </form>
                       </>
                     ) : null}

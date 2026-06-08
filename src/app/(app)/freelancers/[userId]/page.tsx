@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import { formatHourlyRate } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getCurrentUserId,
@@ -64,6 +65,7 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
   const isOwner = viewerId === userId;
   const isAdmin = viewerRole === "admin";
   const canSeePrivate = isOwner || isAdmin;
+  const canSeeRate = viewerRole !== "client";
 
   let profileImageUrl: string | null = null;
   if (freelancerProfile?.profile_image_path) {
@@ -86,15 +88,21 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
     return parts.join(" ");
   })();
 
-  const rateLabel = freelancerProfile?.hourly_rate
-    ? `₹${Number(freelancerProfile.hourly_rate).toLocaleString("en-IN")} / hr${
-        freelancerProfile.rate_negotiable ? " (negotiable)" : ""
-      }`
-    : "Not specified";
+  const rateLabel =
+    canSeeRate && freelancerProfile?.hourly_rate
+      ? `${formatHourlyRate(Number(freelancerProfile.hourly_rate))}${
+          freelancerProfile.rate_negotiable ? " (negotiable)" : ""
+        }`
+      : null;
 
-  const availabilityLabel = freelancerProfile?.looking_for_job
-    ? freelancerProfile?.availability || "Available"
-    : "Currently unavailable";
+  const availabilityLabel = freelancerProfile?.availability || "Not specified";
+
+  const lookingForFullTimeLabel =
+    freelancerProfile?.looking_for_job === true
+      ? "Yes"
+      : freelancerProfile?.looking_for_job === false
+        ? "No"
+        : "Not specified";
 
   return (
     <div className="space-y-6">
@@ -168,15 +176,21 @@ export default async function FreelancerPublicProfilePage({ params }: Props) {
               <dt className="text-muted-foreground">PLM experience</dt>
               <dd className="font-medium text-slate-800">{experienceLabel}</dd>
             </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Hourly rate</dt>
-              <dd className="font-medium text-slate-800">{rateLabel}</dd>
-            </div>
+            {canSeeRate ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Hourly rate</dt>
+                <dd className="font-medium text-slate-800">{rateLabel ?? "Not specified"}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">Availability</dt>
               <dd className="font-medium text-slate-800">{availabilityLabel}</dd>
             </div>
-            {freelancerProfile?.notice_period ? (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Looking for full-time job</dt>
+              <dd className="font-medium text-slate-800">{lookingForFullTimeLabel}</dd>
+            </div>
+            {freelancerProfile?.looking_for_job && freelancerProfile.notice_period ? (
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Notice period</dt>
                 <dd className="font-medium text-slate-800">{freelancerProfile.notice_period}</dd>

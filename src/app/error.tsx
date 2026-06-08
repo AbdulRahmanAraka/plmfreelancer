@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { SiteHeaderBar } from "@/components/layouts/site-header";
 
 export default function ErrorBoundary({
   error,
@@ -15,7 +16,9 @@ export default function ErrorBoundary({
   }, [error]);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="flex min-h-screen flex-col">
+      <SiteHeaderBar />
+      <div className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-xs font-semibold uppercase tracking-widest text-rose-700">
         Something went wrong
       </p>
@@ -44,6 +47,7 @@ export default function ErrorBoundary({
         >
           Go home
         </Link>
+      </div>
       </div>
     </div>
   );

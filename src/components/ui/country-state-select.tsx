@@ -10,6 +10,7 @@ type CountryStateSelectProps = {
   defaultStateName?: string | null;
   required?: boolean;
   labelClassName?: string;
+  onLocationChange?: (country: string, state: string) => void;
 };
 
 export function CountryStateSelect({
@@ -19,6 +20,7 @@ export function CountryStateSelect({
   defaultStateName,
   required = false,
   labelClassName,
+  onLocationChange,
 }: CountryStateSelectProps) {
   const countries = useMemo(() => Country.getAllCountries(), []);
 
@@ -61,6 +63,16 @@ export function CountryStateSelect({
   const selectedStateName =
     states.find((state) => state.isoCode === stateIso)?.name ?? "";
 
+  const notifyLocationChange = (nextCountryIso: string, nextStateIso: string) => {
+    if (!onLocationChange) return;
+    const countryName =
+      countries.find((country) => country.isoCode === nextCountryIso)?.name ?? "";
+    const nextStates = nextCountryIso ? State.getStatesOfCountry(nextCountryIso) : [];
+    const stateName =
+      nextStates.find((state) => state.isoCode === nextStateIso)?.name ?? "";
+    onLocationChange(countryName, stateName);
+  };
+
   const inputClass =
     "w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-50";
 
@@ -81,8 +93,10 @@ export function CountryStateSelect({
         <select
           value={countryIso}
           onChange={(event) => {
-            setCountryIso(event.target.value);
+            const nextCountryIso = event.target.value;
+            setCountryIso(nextCountryIso);
             setStateIso("");
+            notifyLocationChange(nextCountryIso, "");
           }}
           required={required}
           className={inputClass}
@@ -108,7 +122,11 @@ export function CountryStateSelect({
         </label>
         <select
           value={stateIso}
-          onChange={(event) => setStateIso(event.target.value)}
+          onChange={(event) => {
+            const nextStateIso = event.target.value;
+            setStateIso(nextStateIso);
+            notifyLocationChange(countryIso, nextStateIso);
+          }}
           required={required && states.length > 0}
           disabled={!countryIso}
           className={inputClass}

@@ -1,25 +1,38 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { signOutAction } from "@/app/(auth)/actions";
+import { deleteProjectAction } from "@/app/(app)/actions";
 import { Button } from "@/components/ui/button";
 
-export function SignOutButton() {
+type DeleteProjectButtonProps = {
+  projectId: number;
+  projectTitle: string;
+};
+
+/**
+ * Two-step delete: clicking the trigger opens a confirmation modal so the
+ * client can never lose a project to a misclick. While the server action is
+ * running, both modal buttons disable themselves and the dimmer ignores
+ * outside-clicks/escape so the action cannot be interrupted mid-flight.
+ */
+export function DeleteProjectButton({ projectId, projectTitle }: DeleteProjectButtonProps) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape" && !pending) setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, pending]);
 
   const confirm = () => {
+    const formData = new FormData();
+    formData.set("project_id", String(projectId));
     startTransition(() => {
-      signOutAction();
+      deleteProjectAction(formData);
     });
   };
 
@@ -27,10 +40,11 @@ export function SignOutButton() {
     <>
       <Button
         type="button"
-        variant="secondary"
+        variant="softDestructive"
+        size="xs"
         onClick={() => setOpen(true)}
       >
-        Sign Out
+        Delete Project
       </Button>
 
       {open ? (
@@ -38,13 +52,13 @@ export function SignOutButton() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-950/40 px-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="signout-title"
+          aria-labelledby="delete-project-title"
           onClick={() => {
             if (!pending) setOpen(false);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 shadow-xl"
+            className="w-full max-w-md rounded-2xl border border-border bg-white p-5 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start gap-3">
@@ -60,17 +74,24 @@ export function SignOutButton() {
                   strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <h2 id="signout-title" className="text-base font-semibold text-indigo-950">
-                  Sign out?
+                <h2 id="delete-project-title" className="text-base font-semibold text-indigo-950">
+                  Delete this project?
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Do you want to logout from your account?
+                  You are about to permanently delete{" "}
+                  <span className="font-semibold text-indigo-900">
+                    &ldquo;{projectTitle}&rdquo;
+                  </span>
+                  . This will also remove its applications, attachments, and
+                  revision history. This action cannot be undone.
                 </p>
               </div>
             </div>
@@ -83,17 +104,17 @@ export function SignOutButton() {
                 disabled={pending}
                 onClick={() => setOpen(false)}
               >
-                No
+                Cancel
               </Button>
               <Button
                 type="button"
                 variant="destructive"
                 size="md"
                 loading={pending}
-                loadingText="Signing out..."
+                loadingText="Deleting..."
                 onClick={confirm}
               >
-                Yes, sign out
+                Yes, delete
               </Button>
             </div>
           </div>

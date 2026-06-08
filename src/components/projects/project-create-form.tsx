@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
 import { createProjectAction } from "@/app/(app)/actions";
 import { ProjectAttachmentField } from "./project-attachment-field";
 
@@ -50,19 +50,11 @@ export function ProjectCreateForm() {
         </select>
       </div>
 
-      <div>
-        <label className={labelClass}>
-          Currency {required}
-        </label>
-        <select name="budget_currency" required defaultValue="INR" className={inputClass}>
-          <option value="INR">Rupees (INR) ₹</option>
-          <option value="USD">Dollars (USD) $</option>
-        </select>
-      </div>
+      <input type="hidden" name="budget_currency" value="USD" />
 
       <div>
         <label className={labelClass}>
-          Min budget {required}
+          Min budget (USD) {required}
         </label>
         <input
           name="budget_min"
@@ -76,7 +68,7 @@ export function ProjectCreateForm() {
 
       <div>
         <label className={labelClass}>
-          Max budget {required}
+          Max budget (USD) {required}
         </label>
         <input
           name="budget_max"
@@ -109,15 +101,14 @@ export function ProjectCreateForm() {
 }
 
 function SubmitButton({ disabledExtra }: { disabledExtra: boolean }) {
-  const { pending } = useFormStatus();
-  const disabled = pending || disabledExtra;
   return (
-    <button
+    <Button
       type="submit"
-      disabled={disabled}
-      className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
+      disabled={disabledExtra}
+      loadingText="Creating..."
+      className="md:col-span-2"
     >
-      {pending ? "Creating..." : disabledExtra ? "Waiting for upload..." : "Create Project"}
-    </button>
+      {disabledExtra ? "Waiting for upload..." : "Create Project"}
+    </Button>
   );
 }

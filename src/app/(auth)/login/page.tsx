@@ -12,7 +12,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md items-center px-4 py-10">
+    <main className="mx-auto flex flex-1 w-full max-w-md items-center px-4 py-10">
       <Card title="Welcome Back" description="Sign in to your PLM Freelancer account" className="w-full">
         <AuthAlert error={params.error} message={params.message} />
         <form action={signInAction} className="mt-4 space-y-4">
@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <span className="font-medium text-indigo-950">Password</span>
             <PasswordInput name="password" required autoComplete="current-password" />
           </label>
-          <Button type="submit" className="w-full">
+          <Button type="submit" loadingText="Signing in..." className="w-full">
             Sign In
           </Button>
         </form>

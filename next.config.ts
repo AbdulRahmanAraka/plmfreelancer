@@ -77,12 +77,9 @@ const nextConfig: NextConfig = {
   // `never`, producing 19 type errors at build time even though runtime works.
   // Proper fix: run `supabase gen types typescript --project-id <ref>` and
   // thread the Database type through createClient<Database>(...). Once that's
-  // done, remove both flags below and re-enable strict build checks.
+  // done, remove this flag and re-enable strict build checks.
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   async headers() {
     return [

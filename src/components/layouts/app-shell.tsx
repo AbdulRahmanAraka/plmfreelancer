@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { markNotificationReadAction } from "@/app/(app)/actions";
+import { Button } from "@/components/ui/button";
+import { SiteHeaderBar, SiteLogoLink } from "@/components/layouts/site-header";
 import { SignOutButton } from "@/components/layouts/sign-out-button";
 
 type ShellRole = "client" | "freelancer" | "admin";
@@ -44,10 +46,17 @@ export function AppShell({
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl">
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-white/85 p-6 backdrop-blur lg:block">
-        <p className="mb-7 text-lg font-bold text-indigo-950">PLM Workspace</p>
-        <nav className="space-y-1">
+    <div className="flex min-h-screen flex-col">
+      <SiteHeaderBar className="lg:hidden">
+        <SignOutButton />
+      </SiteHeaderBar>
+
+      <div className="mx-auto flex w-full max-w-7xl flex-1">
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-white/85 p-6 backdrop-blur lg:block">
+          <div className="mb-7">
+            <SiteLogoLink height={40} />
+          </div>
+          <nav className="space-y-1">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -64,7 +73,9 @@ export function AppShell({
           <div className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-indigo-900">
             Notifications: {unreadCount} unread
           </div>
-          <SignOutButton />
+          <div className="hidden lg:block">
+            <SignOutButton />
+          </div>
         </div>
         <div className="mb-4 rounded-xl border border-border bg-white p-3">
           {notifications.length === 0 ? (
@@ -84,12 +95,9 @@ export function AppShell({
                     {!item.is_read ? (
                       <form action={markNotificationReadAction}>
                         <input type="hidden" name="notification_id" value={item.id} />
-                        <button
-                          type="submit"
-                          className="rounded-md bg-indigo-100 px-2 py-1 font-medium text-indigo-700"
-                        >
+                        <Button type="submit" variant="subtle" size="xs" loadingText="Marking...">
                           Mark Read
-                        </button>
+                        </Button>
                       </form>
                     ) : (
                       <span className="rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
@@ -104,6 +112,7 @@ export function AppShell({
         </div>
         {children}
       </main>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { formatHourlyRate } from "@/lib/format";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 export type AdminUserRow = {
@@ -23,6 +24,7 @@ export type AdminUserRow = {
     plm_experience_months: number | null;
     hourly_rate: number | null;
     availability: string | null;
+    looking_for_job: boolean | null;
     notice_period: string | null;
     portfolio_url: string | null;
     profile_image_url: string | null;
@@ -329,7 +331,7 @@ function FreelancerSection({
 
   const rate =
     f.hourly_rate != null
-      ? `₹${Number(f.hourly_rate).toLocaleString("en-IN")} / hr`
+      ? formatHourlyRate(Number(f.hourly_rate))
       : "—";
 
   return (
@@ -350,7 +352,15 @@ function FreelancerSection({
         <KV label="Experience" value={experience} />
         <KV label="Hourly rate" value={rate} />
         <KV label="Availability" value={f.availability || "—"} />
-        <KV label="Notice period" value={f.notice_period || "—"} />
+        <KV
+          label="Looking for full-time job"
+          value={
+            f.looking_for_job === true ? "Yes" : f.looking_for_job === false ? "No" : "—"
+          }
+        />
+        {f.looking_for_job ? (
+          <KV label="Notice period" value={f.notice_period || "—"} />
+        ) : null}
         <KV
           label="Portfolio"
           value={
