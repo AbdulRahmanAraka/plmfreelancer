@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserId, requireRole } from "@/lib/auth/session";
@@ -926,6 +927,7 @@ export async function updateClientProfileAction(formData: FormData) {
 }
 
 export async function updateFreelancerProfileAction(formData: FormData) {
+  try {
   await requireRole(["freelancer", "admin"]);
   const supabase = await createSupabaseServerClient();
   const userId = await getCurrentUserId();
@@ -1052,6 +1054,10 @@ export async function updateFreelancerProfileAction(formData: FormData) {
   }
 
   if (profileImage instanceof File && profileImage.size > 0) {
+    const maxImageBytes = 3 * 1024 * 1024;
+    if (profileImage.size > maxImageBytes) {
+      redirect("/freelancer/profile?error=Profile+picture+must+be+3+MB+or+smaller");
+    }
     const safeName = profileImage.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const uploadPath = `${userId}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await supabase.storage
@@ -1075,6 +1081,12 @@ export async function updateFreelancerProfileAction(formData: FormData) {
   revalidatePath("/freelancer");
   revalidatePath("/freelancer/profile");
   redirect("/freelancer/profile?message=Profile+saved+successfully");
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      error instanceof Error ? error.message : "Something went wrong while saving your profile";
+    redirect(`/freelancer/profile?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function markNotificationReadAction(formData: FormData) {

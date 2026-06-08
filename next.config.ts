@@ -72,6 +72,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // Profile picture uploads ride along in the same server-action POST.
+      bodySizeLimit: "4mb",
+    },
+  },
   // TODO(deploy-unblock): Supabase admin/server clients are created without a
   // generated `Database` generic, so .select/.insert/.update/.rpc all infer as
   // `never`, producing 19 type errors at build time even though runtime works.

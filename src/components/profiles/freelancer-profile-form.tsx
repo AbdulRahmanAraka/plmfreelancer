@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { MultiSelectChips } from "@/components/ui/multi-select-chips";
 import { CountryStateSelect } from "@/components/ui/country-state-select";
@@ -37,6 +38,40 @@ const inputClass =
   "w-full rounded-xl border border-border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";
 const required = <span className="text-rose-500">*</span>;
 
+const MAX_PROFILE_IMAGE_BYTES = 3 * 1024 * 1024;
+
+function applyFreelancerDraftToFormData(
+  formData: FormData,
+  values: FreelancerProfileFormProps["saved"],
+) {
+  formData.set("full_name", values.full_name);
+  formData.set("phone", values.phone);
+  formData.set("professional_title", values.professional_title);
+  formData.set("introduction", values.introduction);
+  formData.set("country", values.country);
+  formData.set("state", values.state);
+  formData.set("experience_years", values.experience_years);
+  formData.set("experience_months", values.experience_months);
+  formData.set("hourly_rate", values.hourly_rate);
+  formData.set("portfolio_url", values.portfolio_url);
+  formData.set("availability", values.availability);
+  formData.set("looking_for_full_time_job", values.looking_for_full_time_job);
+  formData.set(
+    "notice_period",
+    values.looking_for_full_time_job === "yes" ? values.notice_period : "",
+  );
+
+  formData.delete("skills");
+  for (const skill of values.skills) {
+    formData.append("skills", skill);
+  }
+
+  formData.delete("software");
+  for (const tool of values.software) {
+    formData.append("software", tool);
+  }
+}
+
 export function FreelancerProfileForm({
   userId,
   profileImageUrl,
@@ -45,6 +80,8 @@ export function FreelancerProfileForm({
   softwareOptions,
   savedSuccessfully,
 }: FreelancerProfileFormProps) {
+  const [isPending, startTransition] = useTransition();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { values, update, ready } = useProfileDraft(
     "freelancer",
     userId,
@@ -65,8 +102,31 @@ export function FreelancerProfileForm({
     );
   }
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError(null);
+
+    const formData = new FormData(event.currentTarget);
+    applyFreelancerDraftToFormData(formData, values);
+
+    const profileImage = formData.get("profile_image");
+    if (profileImage instanceof File && profileImage.size > MAX_PROFILE_IMAGE_BYTES) {
+      setSubmitError("Profile picture must be 3 MB or smaller.");
+      return;
+    }
+
+    startTransition(() => {
+      updateFreelancerProfileAction(formData);
+    });
+  };
+
   return (
-    <form action={updateFreelancerProfileAction} className="grid gap-4 md:grid-cols-2">
+    <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+      {submitError ? (
+        <p className="md:col-span-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {submitError}
+        </p>
+      ) : null}
       <div className="md:col-span-2">
         <label className={labelClass}>Profile Picture</label>
         <div className="flex items-center gap-4">
@@ -267,7 +327,12 @@ export function FreelancerProfileForm({
         />
       </div>
 
-      <Button type="submit" loadingText="Saving..." className="md:col-span-2">
+      <Button
+        type="submit"
+        loading={isPending}
+        loadingText="Saving..."
+        className="md:col-span-2"
+      >
         Save Profile
       </Button>
     </form>
