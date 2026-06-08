@@ -34,6 +34,20 @@ export default async function FreelancerProfilePage({
   const currentSoftware = (softwareRows ?? []).map((item) => item.software);
   const profileImagePath = freelancerProfile?.profile_image_path as string | null | undefined;
 
+  // `looking_for_job` defaults to `true` in the DB for new rows before the user
+  // answers the question. Treat that factory default as "unanswered" so we do
+  // not pre-select "Yes" and silently require notice period on first save.
+  const fullTimeJobPreferenceAnswered =
+    freelancerProfile?.looking_for_job === false ||
+    Boolean(freelancerProfile?.notice_period?.trim());
+  const lookingForFullTimeJob = !fullTimeJobPreferenceAnswered
+    ? ""
+    : freelancerProfile?.looking_for_job === true
+      ? "yes"
+      : freelancerProfile?.looking_for_job === false
+        ? "no"
+        : "";
+
   let profileImageUrl: string | null = null;
   if (profileImagePath) {
     const { data } = await supabase
@@ -83,12 +97,7 @@ export default async function FreelancerProfilePage({
                 : "",
             portfolio_url: freelancerProfile?.portfolio_url ?? "",
             availability: freelancerProfile?.availability ?? "",
-            looking_for_full_time_job:
-              freelancerProfile?.looking_for_job === true
-                ? "yes"
-                : freelancerProfile?.looking_for_job === false
-                  ? "no"
-                  : "",
+            looking_for_full_time_job: lookingForFullTimeJob,
             notice_period: freelancerProfile?.notice_period ?? "",
             skills: currentSkills,
             software: currentSoftware,

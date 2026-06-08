@@ -133,6 +133,7 @@ export function FreelancerProfileForm({
       </div>
 
       <CountryStateSelect
+        key={`location-${values.country}-${values.state}`}
         defaultCountryName={values.country || null}
         defaultStateName={values.state || null}
         required

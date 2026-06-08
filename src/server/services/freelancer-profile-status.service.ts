@@ -31,7 +31,7 @@ export async function getFreelancerProfileStatus(
     supabase
       .from("freelancer_profiles")
       .select(
-        "country, professional_title, plm_experience_years, hourly_rate, availability",
+        "country, professional_title, plm_experience_years, hourly_rate, availability, looking_for_job, notice_period",
       )
       .eq("user_id", userId)
       .maybeSingle(),
@@ -53,6 +53,8 @@ export async function getFreelancerProfileStatus(
         plm_experience_years: number | null;
         hourly_rate: number | string | null;
         availability: string | null;
+        looking_for_job: boolean | null;
+        notice_period: string | null;
       }
     | null;
 
@@ -73,6 +75,15 @@ export async function getFreelancerProfileStatus(
   if (!fp?.availability || !ALLOWED_AVAILABILITY.has(fp.availability)) {
     missing.push("Availability");
   }
+
+  const fullTimeJobPreferenceAnswered =
+    fp?.looking_for_job === false || Boolean(fp?.notice_period?.trim());
+  if (!fullTimeJobPreferenceAnswered) {
+    missing.push("Full-time job preference");
+  } else if (fp?.looking_for_job === true && !fp?.notice_period?.trim()) {
+    missing.push("Notice period");
+  }
+
   if ((skillCount ?? 0) < 1) missing.push("At least one skill");
   if ((softwareCount ?? 0) < 1) missing.push("At least one software");
 
