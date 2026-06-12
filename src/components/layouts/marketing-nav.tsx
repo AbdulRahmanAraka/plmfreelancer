@@ -13,6 +13,8 @@ type NavLink = {
 
 const primaryLinks: NavLink[] = [{ href: "/", label: "Home" }];
 
+const secondaryLinks: NavLink[] = [{ href: "/about", label: "About Us" }];
+
 const authLinks: NavLink[] = [
   { href: "/login", label: "Login" },
   { href: "/register", label: "Register" },
@@ -50,6 +52,9 @@ export function MarketingNav() {
             <NavItem key={link.href} link={link} pathname={pathname} />
           ))}
           <ServicesMenu />
+          {secondaryLinks.map((link) => (
+            <NavItem key={link.href} link={link} pathname={pathname} />
+          ))}
           {authLinks.map((link) => (
             <NavItem key={link.href} link={link} pathname={pathname} />
           ))}
