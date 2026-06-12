@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SiteLogoLink } from "@/components/layouts/site-header";
+import { ServicesMenu } from "@/components/layouts/services-menu";
 import { cn } from "@/lib/utils";
 
 type NavLink = {
@@ -10,11 +11,32 @@ type NavLink = {
   label: string;
 };
 
-const navLinks: NavLink[] = [
-  { href: "/", label: "Home" },
+const primaryLinks: NavLink[] = [{ href: "/", label: "Home" }];
+
+const authLinks: NavLink[] = [
   { href: "/login", label: "Login" },
   { href: "/register", label: "Register" },
 ];
+
+function NavItem({ link, pathname }: { link: NavLink; pathname: string | null }) {
+  const isActive =
+    link.href === "/" ? pathname === "/" : pathname?.startsWith(link.href);
+
+  return (
+    <Link
+      href={link.href}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "rounded-md px-3 py-1.5 text-sm font-semibold transition sm:px-4",
+        isActive
+          ? "bg-sky-300 text-indigo-950 shadow-sm hover:bg-sky-400"
+          : "text-indigo-950 hover:bg-indigo-100/70",
+      )}
+    >
+      {link.label}
+    </Link>
+  );
+}
 
 export function MarketingNav() {
   const pathname = usePathname();
@@ -24,25 +46,13 @@ export function MarketingNav() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <SiteLogoLink height={40} />
         <nav className="flex items-center gap-1 sm:gap-2">
-          {navLinks.map((link) => {
-            const isActive =
-              link.href === "/" ? pathname === "/" : pathname?.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-semibold transition sm:px-4",
-                  isActive
-                    ? "bg-sky-300 text-indigo-950 shadow-sm hover:bg-sky-400"
-                    : "text-indigo-950 hover:bg-indigo-100/70",
-                )}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+          {primaryLinks.map((link) => (
+            <NavItem key={link.href} link={link} pathname={pathname} />
+          ))}
+          <ServicesMenu />
+          {authLinks.map((link) => (
+            <NavItem key={link.href} link={link} pathname={pathname} />
+          ))}
         </nav>
       </div>
     </header>
