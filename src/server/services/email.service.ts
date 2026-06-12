@@ -49,6 +49,11 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   }
 }
 
+type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+};
+
 type SendEmailInput = {
   to: string;
   subject: string;
@@ -56,6 +61,7 @@ type SendEmailInput = {
   body: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  attachments?: EmailAttachment[];
 };
 
 function buildHtml({ heading, body, ctaLabel, ctaUrl }: Omit<SendEmailInput, "to" | "subject">) {
@@ -124,6 +130,10 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
       subject: input.subject,
       html: buildHtml(input),
       text: buildText(input),
+      attachments: input.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.content,
+      })),
     });
     if (error) {
       const e = error as {

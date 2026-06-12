@@ -4,12 +4,12 @@ import Link from "next/link";
 function HeadsetIcon() {
   return (
     <svg
-      width="24"
-      height="24"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -146,10 +146,10 @@ export default function MarketingHomePage() {
           </div>
           <div className="flex justify-center md:justify-end">
             <Image
-              src="/plm_homepage_global.png"
+              src="/homepage%20image.png"
               alt="Global network of PLM professionals and platforms"
-              width={1363}
-              height={768}
+              width={1536}
+              height={1024}
               unoptimized
               priority
               className="h-auto w-full max-w-72 object-contain md:max-w-sm lg:max-w-md"
@@ -159,15 +159,34 @@ export default function MarketingHomePage() {
       </section>
 
       <section className="relative shrink-0 border-t border-slate-100 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-1 px-4 py-3 text-center sm:px-6 sm:py-4">
-          <span className="inline-flex items-center gap-2 text-indigo-700">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-sky-100 to-indigo-100 ring-1 ring-indigo-100">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-2 px-4 py-3 text-center sm:px-6 sm:py-4">
+          <Link
+            href="/support"
+            className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-white px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-950 shadow-[0_2px_10px_rgba(13,70,217,0.08)] ring-1 ring-indigo-100 transition duration-300 hover:-translate-y-0.5 hover:ring-sky-300 hover:shadow-[0_14px_32px_rgba(56,160,255,0.25)] sm:text-sm"
+          >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-sky-100/70 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+            />
+            <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-sky-100 to-indigo-100 text-indigo-600 ring-1 ring-white/80 transition group-hover:from-sky-200 group-hover:to-indigo-200 group-hover:text-indigo-700">
               <HeadsetIcon />
             </span>
-            <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-indigo-950 sm:text-base">
-              On Demand PLM Support
-            </h2>
-          </span>
+            <span className="relative">On Demand PLM Support</span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="relative text-indigo-600 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-indigo-700"
+            >
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </Link>
           <p className="text-xs text-slate-600 sm:text-sm">
             Get instant assistance from PLM experts whenever you need it.
           </p>

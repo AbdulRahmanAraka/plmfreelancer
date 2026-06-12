@@ -5,22 +5,23 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-type ServiceLink = {
+export type ServiceLink = {
   label: string;
   href: string;
 };
 
-type ServiceGroup = {
+export type ServiceGroup = {
   heading: string;
   items: ServiceLink[];
 };
 
-const SERVICE_GROUPS: ServiceGroup[] = [
+export const SERVICE_GROUPS: ServiceGroup[] = [
   {
     heading: "For Clients",
     items: [
       { label: "Hire PLM Resources", href: "#" },
       { label: "Find PLM Vendors", href: "#" },
+      { label: "On Demand PLM Support", href: "/support" },
       { label: "Submit Requirement", href: "/register?role=client" },
     ],
   },
