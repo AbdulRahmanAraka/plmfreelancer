@@ -13,7 +13,10 @@ type NavLink = {
 
 const primaryLinks: NavLink[] = [{ href: "/", label: "Home" }];
 
-const secondaryLinks: NavLink[] = [{ href: "/about", label: "About Us" }];
+const secondaryLinks: NavLink[] = [
+  { href: "/about", label: "About Us" },
+  { href: "/contact", label: "Contact Us" },
+];
 
 const authLinks: NavLink[] = [
   { href: "/login", label: "Login" },
