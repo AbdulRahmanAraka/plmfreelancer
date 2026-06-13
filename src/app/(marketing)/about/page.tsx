@@ -274,7 +274,7 @@ export default function AboutPage() {
               </Link>
               <Link
                 href="/register?role=freelancer"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-white/10 px-7 text-xs font-bold uppercase tracking-wider text-white ring-1 ring-white/30 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15 hover:ring-sky-200/60"
+                className="inline-flex h-12 items-center justify-center rounded-full bg-white px-7 text-xs font-bold uppercase tracking-wider text-indigo-950 shadow-[0_10px_28px_rgba(255,255,255,0.25)] ring-1 ring-white transition hover:-translate-y-0.5 hover:bg-sky-50 hover:shadow-[0_16px_36px_rgba(255,255,255,0.4)]"
               >
                 Join as a Freelancer
               </Link>
@@ -448,15 +448,16 @@ export default function AboutPage() {
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link
               href="/register?role=client"
-              className="inline-flex h-12 items-center justify-center rounded-full bg-white px-7 text-xs font-bold uppercase tracking-wider text-indigo-950 shadow-[0_10px_28px_rgba(125,211,252,0.35)] ring-1 ring-white/80 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(125,211,252,0.55)] hover:ring-sky-200"
+              className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-full bg-linear-to-r from-cyan-400 via-sky-500 to-indigo-500 px-7 text-xs font-bold uppercase tracking-wider text-white shadow-[0_12px_32px_rgba(56,189,248,0.45)] ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(56,189,248,0.6)] hover:brightness-110"
             >
-              Submit a Requirement
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              <span className="relative">Submit a Requirement</span>
             </Link>
             <Link
               href="/register?role=freelancer"
-              className="inline-flex h-12 items-center justify-center rounded-full bg-linear-to-r from-cyan-400 via-sky-500 to-indigo-500 px-7 text-xs font-bold uppercase tracking-wider text-white shadow-[0_10px_28px_rgba(56,189,248,0.35)] ring-1 ring-white/20 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(56,189,248,0.55)] hover:brightness-110"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-white px-7 text-xs font-bold uppercase tracking-wider !text-[#05082a] shadow-[0_10px_28px_rgba(255,255,255,0.25)] ring-1 ring-sky-200/80 transition hover:-translate-y-0.5 hover:bg-sky-50 hover:shadow-[0_16px_36px_rgba(255,255,255,0.4)]"
             >
-              Apply as a Freelancer
+              <span className="text-[#05082a]">Apply as a Freelancer</span>
             </Link>
           </div>
         </div>

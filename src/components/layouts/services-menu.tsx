@@ -19,15 +19,15 @@ export const SERVICE_GROUPS: ServiceGroup[] = [
   {
     heading: "For Clients",
     items: [
-      { label: "Hire PLM Resources", href: "#" },
-      { label: "Find PLM Vendors", href: "#" },
+      { label: "Hire PLM Resources", href: "/hire-resources" },
+      { label: "Find PLM Vendors", href: "/find-vendors" },
       { label: "On Demand PLM Support", href: "/support" },
       { label: "Submit Requirement", href: "/register?role=client" },
     ],
   },
   {
     heading: "For Learning",
-    items: [{ label: "PLM Training", href: "#" }],
+    items: [{ label: "PLM Training", href: "/training" }],
   },
   {
     heading: "For Professionals",

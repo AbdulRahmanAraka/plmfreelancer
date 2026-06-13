@@ -114,7 +114,7 @@ export default function SupportPage() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-[#05082a] to-transparent"
         />
 
-        <div className="relative mx-auto w-full max-w-4xl px-4 py-20 text-center sm:px-6 md:py-28">
+        <div className="relative mx-auto w-full max-w-4xl px-4 pt-10 pb-16 text-center sm:px-6 md:pt-12 md:pb-20">
           <p
             className="animate-fade-up inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.3em] text-sky-300 ring-1 ring-white/10 backdrop-blur"
             style={{ animationDelay: "0.05s" }}
