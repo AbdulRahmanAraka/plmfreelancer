@@ -44,6 +44,7 @@ export function AppShell({
 }) {
   const navItems = navByRole[role];
   const unreadCount = notifications.filter((item) => !item.is_read).length;
+  const showNotifications = role === "client";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -69,47 +70,51 @@ export function AppShell({
         </nav>
       </aside>
       <main className="flex-1 p-4 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-indigo-900">
-            Notifications: {unreadCount} unread
-          </div>
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+          {showNotifications ? (
+            <div className="mr-auto rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-indigo-900">
+              Notifications: {unreadCount} unread
+            </div>
+          ) : null}
           <div className="hidden lg:block">
             <SignOutButton />
           </div>
         </div>
-        <div className="mb-4 rounded-xl border border-border bg-white p-3">
-          {notifications.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No notifications yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {notifications.slice(0, 6).map((item) => (
-                <article
-                  key={item.id}
-                  className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 text-xs md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <p className="font-semibold text-indigo-950">{item.title}</p>
-                    <p className="text-muted-foreground">{item.message}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!item.is_read ? (
-                      <form action={markNotificationReadAction}>
-                        <input type="hidden" name="notification_id" value={item.id} />
-                        <Button type="submit" variant="subtle" size="xs" loadingText="Marking...">
-                          Mark Read
-                        </Button>
-                      </form>
-                    ) : (
-                      <span className="rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
-                        Read
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
+        {showNotifications ? (
+          <div className="mb-4 rounded-xl border border-border bg-white p-3">
+            {notifications.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No notifications yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {notifications.slice(0, 6).map((item) => (
+                  <article
+                    key={item.id}
+                    className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 text-xs md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <p className="font-semibold text-indigo-950">{item.title}</p>
+                      <p className="text-muted-foreground">{item.message}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!item.is_read ? (
+                        <form action={markNotificationReadAction}>
+                          <input type="hidden" name="notification_id" value={item.id} />
+                          <Button type="submit" variant="subtle" size="xs" loadingText="Marking...">
+                            Mark Read
+                          </Button>
+                        </form>
+                      ) : (
+                        <span className="rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-700">
+                          Read
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
         {children}
       </main>
       </div>

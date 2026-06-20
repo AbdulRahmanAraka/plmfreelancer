@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,9 +17,14 @@ import {
 import { formatBudgetRange } from "@/lib/format";
 import { getFreelancerProfileStatus } from "@/server/services/freelancer-profile-status.service";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import { ProjectDescriptionPreview } from "@/components/projects/project-description-preview";
+import { ProjectListCard } from "@/components/projects/project-list-card";
+import { ProjectSkillsList } from "@/components/projects/project-skills-list";
+import { ProjectSearchBar } from "@/components/search/project-search-bar";
+import { filterProjectsByQuery } from "@/lib/project-search";
 
 type FreelancerPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string }>;
 };
 
 export default async function FreelancerDashboardPage({ searchParams }: FreelancerPageProps) {
@@ -26,6 +32,7 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
   const freelancerId = await getCurrentUserId();
   const supabase = await createSupabaseServerClient();
   const params = await searchParams;
+  const searchQuery = (params.q ?? "").trim();
 
   const [{ data: profile }, { data: freelancerProfile }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("user_id", freelancerId).single(),
@@ -61,6 +68,36 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
     .in("status", ["assigned", "in_progress", "completed", "accepted", "enhancement_requested"])
     .order("updated_at", { ascending: false });
   const safeAssignedProjects = assignedProjects ?? [];
+
+  const allProjectIds = [
+    ...new Set([
+      ...safeProjects.map((p) => p.id),
+      ...safeAssignedProjects.map((p) => p.id),
+    ]),
+  ];
+
+  const { data: skillRows } = allProjectIds.length
+    ? await supabase
+        .from("project_skills")
+        .select("project_id, skill")
+        .in("project_id", allProjectIds)
+    : { data: [] as Array<{ project_id: number; skill: string }> };
+
+  const skillsByProject = new Map<number, string[]>();
+  for (const row of skillRows ?? []) {
+    const list = skillsByProject.get(row.project_id) ?? [];
+    list.push(row.skill);
+    skillsByProject.set(row.project_id, list);
+  }
+
+  const filteredProjects = filterProjectsByQuery(
+    safeProjects.map((project) => ({
+      ...project,
+      skills: skillsByProject.get(project.id) ?? [],
+    })),
+    searchQuery,
+  );
+
   const assignedProjectIds = safeAssignedProjects.map((p) => p.id);
 
   const { data: enhancementRows } = assignedProjectIds.length
@@ -127,6 +164,16 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
             Edit Profile
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-white p-3">
+        <Suspense fallback={<div className="h-10 animate-pulse rounded-xl bg-indigo-50" />}>
+          <ProjectSearchBar
+            actionPath="/freelancer"
+            placeholder="Search skills, software, or project keywords..."
+            syncFromUrl
+          />
+        </Suspense>
       </div>
 
       {!profileStatus.isComplete ? (
@@ -226,7 +273,14 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
         </div>
       </Card>
 
-      <Card title="Open Opportunities" description="Apply to active client projects">
+      <Card
+        title="Open Opportunities"
+        description={
+          searchQuery
+            ? `Showing projects matching "${searchQuery}"`
+            : "Apply to active client projects"
+        }
+      >
         {params.error ? (
           <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {params.error}
@@ -234,76 +288,98 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
         ) : null}
         {safeProjects.length === 0 ? (
           <p className="text-sm text-muted-foreground">No projects available right now.</p>
+        ) : filteredProjects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No projects match &ldquo;{searchQuery}&rdquo;. Try Teamcenter, BMIDE, or another skill.
+          </p>
         ) : (
           <div className="space-y-3">
-            {safeProjects.map((project) => {
+            {filteredProjects.map((project) => {
               const myStatus = applicationMap.get(project.id);
               const signedUrl = signedAttachmentMap.get(project.id);
 
               return (
-                <article key={project.id} className="rounded-xl border border-border bg-white px-4 py-3">
+                <ProjectListCard
+                  key={project.id}
+                  projectId={project.id}
+                  projectTitle={project.title}
+                  footer={
+                    <>
+                      {signedUrl ? (
+                        <Link
+                          href={signedUrl}
+                          target="_blank"
+                          className="mb-3 inline-block text-xs font-medium text-indigo-700 underline"
+                        >
+                          Download requirement file
+                        </Link>
+                      ) : null}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {myStatus ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs capitalize text-emerald-800">
+                            Application: {myStatus.replace("_", " ")}
+                          </span>
+                        ) : !profileStatus.isComplete ? (
+                          <Link
+                            href="/freelancer/profile"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+                          >
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            Complete profile to apply
+                          </Link>
+                        ) : (
+                          <form action={applyToProjectAction} className="flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="project_id" value={project.id} />
+                            <input
+                              type="text"
+                              name="cover_letter"
+                              placeholder="Short cover note (optional)"
+                              className="min-w-64 rounded-lg border border-border px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+                            />
+                            <Button type="submit" size="sm" loadingText="Applying...">
+                              Apply
+                            </Button>
+                          </form>
+                        )}
+                      </div>
+                    </>
+                  }
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-semibold text-indigo-950">{project.title}</h3>
+                    <h3 className="font-semibold text-indigo-950 transition group-hover:text-indigo-700 group-hover:underline">
+                      {project.title}
+                    </h3>
                     <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs capitalize text-indigo-800">
                       {project.status.replace("_", " ")}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+                  <ProjectDescriptionPreview
+                    description={project.description}
+                    projectId={project.id}
+                    showReadMore={false}
+                  />
+                  <ProjectSkillsList
+                    skills={skillsByProject.get(project.id) ?? []}
+                    className="mt-2"
+                  />
                   <p className="mt-2 text-xs text-muted-foreground">
                     Budget ({project.budget_type ?? "—"}):{" "}
                     {formatBudgetRange(project.budget_min, project.budget_max, project.budget_currency)}
                   </p>
-                  {signedUrl ? (
-                    <Link
-                      href={signedUrl}
-                      target="_blank"
-                      className="mt-1 inline-block text-xs font-medium text-indigo-700 underline"
-                    >
-                      Download requirement file
-                    </Link>
-                  ) : null}
-                  <div className="mt-3">
-                    {myStatus ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs capitalize text-emerald-800">
-                        Application: {myStatus.replace("_", " ")}
-                      </span>
-                    ) : !profileStatus.isComplete ? (
-                      <Link
-                        href="/freelancer/profile"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
-                      >
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                        Complete profile to apply
-                      </Link>
-                    ) : (
-                      <form action={applyToProjectAction} className="flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="project_id" value={project.id} />
-                        <input
-                          type="text"
-                          name="cover_letter"
-                          placeholder="Short cover note (optional)"
-                          className="min-w-64 rounded-lg border border-border px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
-                        />
-                        <Button type="submit" size="sm" loadingText="Applying...">
-                          Apply
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                </article>
+                </ProjectListCard>
               );
             })}
           </div>
@@ -320,94 +396,112 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
               const showThread =
                 messages.length > 0 || project.status === "enhancement_requested";
               return (
-              <article key={project.id} className="rounded-xl border border-border bg-white px-4 py-3">
+              <ProjectListCard
+                key={project.id}
+                projectId={project.id}
+                projectTitle={project.title}
+                footer={
+                  <>
+                    {signedAttachmentMap.get(project.id) ? (
+                      <Link
+                        href={signedAttachmentMap.get(project.id) as string}
+                        target="_blank"
+                        className="mb-3 inline-block text-xs font-medium text-indigo-700 underline"
+                      >
+                        Download project file
+                      </Link>
+                    ) : null}
+                    {project.status === "accepted" ? (
+                      <p className="mb-3 inline-block rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                        Client accepted delivery
+                      </p>
+                    ) : (
+                      <form action={updateFreelancerProjectStatusAction} className="mb-3 flex flex-wrap gap-2">
+                        <input type="hidden" name="project_id" value={project.id} />
+                        <Button
+                          type="submit"
+                          name="status"
+                          value="in_progress"
+                          variant="subtle"
+                          size="sm"
+                          loadingText="Updating..."
+                        >
+                          Mark In Progress
+                        </Button>
+                        <Button
+                          type="submit"
+                          name="status"
+                          value="completed"
+                          variant="softSuccess"
+                          size="sm"
+                          loadingText="Updating..."
+                        >
+                          Mark Completed
+                        </Button>
+                      </form>
+                    )}
+
+                    {showThread ? (
+                      <div className="space-y-2 rounded-xl border border-amber-100 bg-amber-50/40 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                          Revision Thread
+                        </p>
+                        <EnhancementThread
+                          messages={messages}
+                          currentUserId={freelancerId}
+                          emptyLabel="Client requested a revision but provided no note."
+                        />
+                        {project.status === "enhancement_requested" ? (
+                          <>
+                            <form action={addEnhancementMessageAction} className="space-y-2">
+                              <input type="hidden" name="project_id" value={project.id} />
+                              <input type="hidden" name="return_to" value="/freelancer" />
+                              <textarea
+                                name="description"
+                                required
+                                placeholder="Reply to the client"
+                                className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
+                              />
+                              <Button type="submit" size="xs" variant="primary" loadingText="Sending...">
+                                Send Reply
+                              </Button>
+                            </form>
+                            <form action={freelancerResubmitAction} className="space-y-2 border-t border-amber-100 pt-2">
+                              <input type="hidden" name="project_id" value={project.id} />
+                              <textarea
+                                name="description"
+                                placeholder="Optional note: what you changed before re-submitting"
+                                className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
+                              />
+                              <Button type="submit" size="xs" variant="softSuccess" loadingText="Re-submitting...">
+                                Re-submit for Review
+                              </Button>
+                            </form>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                }
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold text-indigo-950">{project.title}</h3>
+                  <h3 className="font-semibold text-indigo-950 transition group-hover:text-indigo-700 group-hover:underline">
+                    {project.title}
+                  </h3>
                   <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs capitalize text-indigo-800">
                     {project.status.replace("_", " ")}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
-                {signedAttachmentMap.get(project.id) ? (
-                  <Link
-                    href={signedAttachmentMap.get(project.id) as string}
-                    target="_blank"
-                    className="mt-1 inline-block text-xs font-medium text-indigo-700 underline"
-                  >
-                    Download project file
-                  </Link>
-                ) : null}
-                {project.status === "accepted" ? (
-                  <p className="mt-2 inline-block rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    Client accepted delivery
-                  </p>
-                ) : (
-                  <form action={updateFreelancerProjectStatusAction} className="mt-3 flex flex-wrap gap-2">
-                    <input type="hidden" name="project_id" value={project.id} />
-                    <Button
-                      type="submit"
-                      name="status"
-                      value="in_progress"
-                      variant="subtle"
-                      size="sm"
-                      loadingText="Updating..."
-                    >
-                      Mark In Progress
-                    </Button>
-                    <Button
-                      type="submit"
-                      name="status"
-                      value="completed"
-                      variant="softSuccess"
-                      size="sm"
-                      loadingText="Updating..."
-                    >
-                      Mark Completed
-                    </Button>
-                  </form>
-                )}
-
-                {showThread ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-amber-100 bg-amber-50/40 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                      Revision Thread
-                    </p>
-                    <EnhancementThread
-                      messages={messages}
-                      currentUserId={freelancerId}
-                      emptyLabel="Client requested a revision but provided no note."
-                    />
-                    {project.status === "enhancement_requested" ? (
-                      <>
-                        <form action={addEnhancementMessageAction} className="space-y-2">
-                          <input type="hidden" name="project_id" value={project.id} />
-                          <input type="hidden" name="return_to" value="/freelancer" />
-                          <textarea
-                            name="description"
-                            required
-                            placeholder="Reply to the client"
-                            className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
-                          />
-                          <Button type="submit" size="xs" variant="primary" loadingText="Sending...">
-                            Send Reply
-                          </Button>
-                        </form>
-                        <form action={freelancerResubmitAction} className="space-y-2 border-t border-amber-100 pt-2">
-                          <input type="hidden" name="project_id" value={project.id} />
-                          <textarea
-                            name="description"
-                            placeholder="Optional note: what you changed before re-submitting"
-                            className="min-h-14 w-full rounded-lg border border-border px-2 py-1.5 text-xs outline-none focus:border-indigo-500"
-                          />
-                          <Button type="submit" size="xs" variant="softSuccess" loadingText="Re-submitting...">
-                            Re-submit for Review
-                          </Button>
-                        </form>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-              </article>
+                <ProjectDescriptionPreview
+                  description={project.description}
+                  projectId={project.id}
+                  showReadMore={false}
+                />
+                <ProjectSkillsList
+                  skills={skillsByProject.get(project.id) ?? []}
+                  className="mt-2"
+                />
+              </ProjectListCard>
               );
             })}
           </div>

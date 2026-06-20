@@ -39,6 +39,17 @@ function asNumberOrNull(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseSkillsFromForm(formData: FormData): string[] {
+  return [
+    ...new Set(
+      formData
+        .getAll("skills")
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean),
+    ),
+  ];
+}
+
 function asIntegerOrNull(value: string) {
   if (!value) return null;
   const parsed = Number(value);
@@ -125,9 +136,14 @@ export async function createProjectAction(formData: FormData) {
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
   const deadline = asText(formData, "deadline");
   const submittedPath = asText(formData, "attachment_path");
+  const skills = parseSkillsFromForm(formData);
 
   if (!title || !description) {
     redirect("/client?error=Title+and+description+are+required");
+  }
+
+  if (skills.length === 0) {
+    redirect("/client?error=Please+select+at+least+one+required+skill");
   }
 
   if (!budgetType || !["hourly", "fixed"].includes(budgetType)) {
@@ -176,6 +192,16 @@ export async function createProjectAction(formData: FormData) {
 
   if (error) {
     redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (data?.id) {
+    const { error: skillsError } = await supabase
+      .from("project_skills")
+      .insert(skills.map((skill) => ({ project_id: data.id, skill })));
+
+    if (skillsError) {
+      redirect(`/client?error=${encodeURIComponent(skillsError.message)}`);
+    }
   }
 
   await createNotification({
@@ -265,13 +291,14 @@ export async function updateProjectAction(formData: FormData) {
 }
 
 export async function deleteProjectAction(formData: FormData) {
-  await requireRole(["client", "admin"]);
+  const role = await requireRole(["client", "admin"]);
   const supabase = await createSupabaseServerClient();
   const clientId = await getCurrentUserId();
   const projectId = Number(asText(formData, "project_id"));
+  const returnTo = asText(formData, "return_to");
 
   if (!projectId) {
-    redirect("/client?error=Project+selection+is+invalid");
+    redirect(role === "admin" ? "/admin?error=Project+selection+is+invalid" : "/client?error=Project+selection+is+invalid");
   }
 
   const { data: project } = await supabase
@@ -282,7 +309,8 @@ export async function deleteProjectAction(formData: FormData) {
 
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) {
-    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+    const base = role === "admin" ? "/admin" : "/client";
+    redirect(`${base}?error=${encodeURIComponent(error.message)}`);
   }
 
   await createNotification({
@@ -297,6 +325,12 @@ export async function deleteProjectAction(formData: FormData) {
   revalidatePath("/client");
   revalidatePath("/freelancer");
   revalidatePath("/admin");
+  revalidatePath(`/projects/${projectId}`);
+
+  if (returnTo.startsWith("/")) {
+    redirect(returnTo);
+  }
+  redirect(role === "admin" ? "/admin" : "/client");
 }
 
 export async function applyToProjectAction(formData: FormData) {

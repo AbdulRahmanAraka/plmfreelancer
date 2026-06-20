@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MultiSelectChips } from "@/components/ui/multi-select-chips";
 import { createProjectAction } from "@/app/(app)/actions";
+import { SKILL_OPTIONS } from "@/config/constants";
 import { ProjectAttachmentField } from "./project-attachment-field";
 
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700";
@@ -36,6 +38,15 @@ export function ProjectCreateForm() {
           placeholder="Describe scope, deliverables, integrations, current PLM, etc."
           required
           className={`${inputClass} min-h-28`}
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <MultiSelectChips
+          title="Required skills *"
+          name="skills"
+          options={SKILL_OPTIONS}
+          inputPlaceholder="Add another required skill and press Enter"
         />
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   adminAssignProjectToFreelancerAction,
@@ -11,11 +12,15 @@ import { loadFreelancerIntros } from "@/server/services/freelancer-intro.service
 import { cn } from "@/lib/utils";
 import { formatBudgetRange } from "@/lib/format";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { ProjectSearchBar } from "@/components/search/project-search-bar";
+import { ProjectDescriptionPreview } from "@/components/projects/project-description-preview";
+import { filterProjectsByQuery } from "@/lib/project-search";
 
 export const dynamic = "force-dynamic";
 
 type AdminPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; q?: string }>;
 };
 
 type ProjectRow = {
@@ -86,6 +91,7 @@ function statusBadgeClass(status: string): string {
 export default async function AdminDashboardPage({ searchParams }: AdminPageProps) {
   await requireRole(["admin"]);
   const params = await searchParams;
+  const searchQuery = (params.q ?? "").trim();
 
   const admin = createSupabaseAdminClient();
   const supabaseServer = await createSupabaseServerClient();
@@ -98,6 +104,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
     .order("created_at", { ascending: false });
 
   const projects = (projectsRaw ?? []) as ProjectRow[];
+  const filteredProjects = filterProjectsByQuery(projects, searchQuery);
 
   const clientIds = [...new Set(projects.map((p) => p.client_id))];
   const assignedIds = [
@@ -257,6 +264,16 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
         </p>
       ) : null}
 
+      <div className="rounded-xl border border-border bg-white p-3">
+        <Suspense fallback={<div className="h-10 animate-pulse rounded-xl bg-indigo-50" />}>
+          <ProjectSearchBar
+            actionPath="/admin"
+            placeholder="Search projects by title, skill, or software..."
+            syncFromUrl
+          />
+        </Suspense>
+      </div>
+
       {projectsError ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {projectsError.message}
@@ -267,9 +284,15 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
         <div className="rounded-xl border border-border bg-white p-8 text-center">
           <p className="text-sm text-muted-foreground">No projects yet.</p>
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="rounded-xl border border-border bg-white p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No projects match &ldquo;{searchQuery}&rdquo;.
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const clientName = profileNameMap.get(project.client_id) ?? "Unknown client";
             const assignedName = project.assigned_freelancer_id
               ? profileNameMap.get(project.assigned_freelancer_id) ?? "—"
@@ -287,9 +310,12 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                 <header className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-semibold text-indigo-950">
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="text-lg font-semibold text-indigo-950 hover:underline"
+                      >
                         {project.title}
-                      </h2>
+                      </Link>
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1",
@@ -303,11 +329,15 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                       Project #{project.id} • Created {formatDate(project.created_at)}
                     </p>
                   </div>
+                  <DeleteProjectButton projectId={project.id} projectTitle={project.title} />
                 </header>
 
-                <p className="mt-3 text-sm text-indigo-900/90 line-clamp-3">
-                  {project.description}
-                </p>
+                <ProjectDescriptionPreview
+                  description={project.description}
+                  projectId={project.id}
+                  maxLines={3}
+                  className="mt-3"
+                />
 
                 <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
                   <div>

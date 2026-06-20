@@ -6,16 +6,18 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { signInAction } from "@/app/(auth)/actions";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
+  const nextPath = params.next?.startsWith("/") ? params.next : "";
   return (
     <main className="mx-auto flex flex-1 w-full max-w-md items-center px-4 py-10">
       <Card title="Welcome Back" description="Sign in to your PLM Freelancer account" className="w-full">
         <AuthAlert error={params.error} message={params.message} />
         <form action={signInAction} className="mt-4 space-y-4">
+          {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
           <label className="block space-y-1 text-sm">
             <span className="font-medium text-indigo-950">Email</span>
             <input

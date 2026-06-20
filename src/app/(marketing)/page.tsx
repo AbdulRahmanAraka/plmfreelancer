@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HomeProjectSearch } from "@/components/search/home-project-search";
+import { getSession } from "@/lib/auth/session";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function HeadsetIcon() {
   return (
@@ -20,10 +23,24 @@ function HeadsetIcon() {
   );
 }
 
-export default function MarketingHomePage() {
+export default async function MarketingHomePage() {
+  const session = await getSession();
+  let userRole: string | null = null;
+
+  if (session) {
+    const supabase = await createSupabaseServerClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", session.user.id)
+      .single();
+    userRole = profile?.role ?? null;
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <section className="relative flex min-h-112 flex-3 shrink-0 flex-col overflow-hidden bg-[#05082a]">
+        <HomeProjectSearch isLoggedIn={Boolean(session)} userRole={userRole} />
         <Image
           src="/hero-blueprint.png"
           alt=""

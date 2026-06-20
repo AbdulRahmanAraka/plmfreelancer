@@ -59,6 +59,7 @@ async function findUserIdByPhone(
 export async function signInAction(formData: FormData) {
   const email = getString(formData, "email");
   const password = getString(formData, "password");
+  const nextPath = getString(formData, "next");
 
   if (!email || !password) {
     redirect("/login?error=Please+enter+email+and+password");
@@ -68,7 +69,12 @@ export async function signInAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : "";
+    redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
+  }
+
+  if (nextPath.startsWith("/")) {
+    redirect(nextPath);
   }
 
   const {
