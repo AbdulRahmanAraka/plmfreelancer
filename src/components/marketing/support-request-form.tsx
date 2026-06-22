@@ -3,10 +3,10 @@
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  INITIAL_SUPPORT_STATE,
-  submitSupportRequestAction,
-  type SupportState,
-} from "@/app/(marketing)/support/actions";
+  INITIAL_MARKETING_FORM_STATE,
+  type MarketingFormState,
+} from "@/components/marketing/form-action-state";
+import { submitSupportRequestAction } from "@/app/(marketing)/support/actions";
 
 type RadioOption = {
   value: string;
@@ -135,9 +135,9 @@ function PriorityPill({ option }: { option: PriorityOption }) {
 }
 
 export function SupportRequestForm() {
-  const [state, formAction] = useActionState<SupportState, FormData>(
+  const [state, formAction] = useActionState<MarketingFormState, FormData>(
     submitSupportRequestAction,
-    INITIAL_SUPPORT_STATE,
+    INITIAL_MARKETING_FORM_STATE,
   );
   const [immediate, setImmediate] = useState(false);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);

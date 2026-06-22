@@ -11,9 +11,11 @@ import {
   StatusBanner,
 } from "@/components/marketing/form-primitives";
 import {
-  INITIAL_RESOURCE_REQUEST_STATE,
+  INITIAL_MARKETING_FORM_STATE,
+  type MarketingFormState,
+} from "@/components/marketing/form-action-state";
+import {
   submitResourceRequestAction,
-  type ResourceRequestState,
 } from "@/app/(marketing)/hire-resources/actions";
 
 const SKILL_OPTIONS = [
@@ -40,9 +42,9 @@ const DURATION_OPTIONS = [
 ];
 
 export function ResourceRequestForm() {
-  const [state, formAction] = useActionState<ResourceRequestState, FormData>(
+  const [state, formAction] = useActionState<MarketingFormState, FormData>(
     submitResourceRequestAction,
-    INITIAL_RESOURCE_REQUEST_STATE,
+    INITIAL_MARKETING_FORM_STATE,
   );
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);

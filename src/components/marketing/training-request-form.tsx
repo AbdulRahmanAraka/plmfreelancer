@@ -11,10 +11,10 @@ import {
   StatusBanner,
 } from "@/components/marketing/form-primitives";
 import {
-  INITIAL_TRAINING_REQUEST_STATE,
-  submitTrainingRequestAction,
-  type TrainingRequestState,
-} from "@/app/(marketing)/training/actions";
+  INITIAL_MARKETING_FORM_STATE,
+  type MarketingFormState,
+} from "@/components/marketing/form-action-state";
+import { submitTrainingRequestAction } from "@/app/(marketing)/training/actions";
 
 const TECHNOLOGY_OPTIONS = [
   { value: "teamcenter", label: "Teamcenter" },
@@ -32,9 +32,9 @@ const MODE_OPTIONS = [
 ];
 
 export function TrainingRequestForm() {
-  const [state, formAction] = useActionState<TrainingRequestState, FormData>(
+  const [state, formAction] = useActionState<MarketingFormState, FormData>(
     submitTrainingRequestAction,
-    INITIAL_TRAINING_REQUEST_STATE,
+    INITIAL_MARKETING_FORM_STATE,
   );
   const formRef = useRef<HTMLFormElement>(null);
 

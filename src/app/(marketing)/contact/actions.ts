@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { MarketingFormState } from "@/components/marketing/form-action-state";
 import { LEGAL } from "@/config/legal";
 import { sendEmail } from "@/server/services/email.service";
 
@@ -38,20 +39,10 @@ const InquirySchema = z.object({
     .max(4000),
 });
 
-export type InquiryState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_INQUIRY_STATE: InquiryState = {
-  status: "idle",
-  message: "",
-};
-
 export async function submitInquiryAction(
-  _prev: InquiryState,
+  _prev: MarketingFormState,
   formData: FormData,
-): Promise<InquiryState> {
+): Promise<MarketingFormState> {
   if (typeof formData.get("hp_field") === "string" && formData.get("hp_field")) {
     return { status: "success", message: "Thanks — we will be in touch." };
   }

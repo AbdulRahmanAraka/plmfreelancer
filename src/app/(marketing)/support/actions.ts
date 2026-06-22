@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { MarketingFormState } from "@/components/marketing/form-action-state";
 import { LEGAL } from "@/config/legal";
 import { sendEmail } from "@/server/services/email.service";
 
@@ -96,24 +97,14 @@ const SupportSchema = z.object({
   immediate: z.boolean().default(false),
 });
 
-export type SupportState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_SUPPORT_STATE: SupportState = {
-  status: "idle",
-  message: "",
-};
-
 function asString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
 }
 
 export async function submitSupportRequestAction(
-  _prev: SupportState,
+  _prev: MarketingFormState,
   formData: FormData,
-): Promise<SupportState> {
+): Promise<MarketingFormState> {
   if (asString(formData.get("hp_field"))) {
     return {
       status: "success",

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { MarketingFormState } from "@/components/marketing/form-action-state";
 import { LEGAL } from "@/config/legal";
 import { sendEmail } from "@/server/services/email.service";
 
@@ -57,24 +58,14 @@ const TrainingRequestSchema = z.object({
     .max(6000),
 });
 
-export type TrainingRequestState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_TRAINING_REQUEST_STATE: TrainingRequestState = {
-  status: "idle",
-  message: "",
-};
-
 function asString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
 }
 
 export async function submitTrainingRequestAction(
-  _prev: TrainingRequestState,
+  _prev: MarketingFormState,
   formData: FormData,
-): Promise<TrainingRequestState> {
+): Promise<MarketingFormState> {
   if (asString(formData.get("hp_field"))) {
     return {
       status: "success",

@@ -11,10 +11,10 @@ import {
   StatusBanner,
 } from "@/components/marketing/form-primitives";
 import {
-  INITIAL_VENDOR_REQUEST_STATE,
-  submitVendorRequestAction,
-  type VendorRequestState,
-} from "@/app/(marketing)/find-vendors/actions";
+  INITIAL_MARKETING_FORM_STATE,
+  type MarketingFormState,
+} from "@/components/marketing/form-action-state";
+import { submitVendorRequestAction } from "@/app/(marketing)/find-vendors/actions";
 
 const PROJECT_TYPE_OPTIONS = [
   { value: "implementation", label: "Implementation" },
@@ -44,9 +44,9 @@ const DURATION_OPTIONS = [
 ];
 
 export function VendorRequestForm() {
-  const [state, formAction] = useActionState<VendorRequestState, FormData>(
+  const [state, formAction] = useActionState<MarketingFormState, FormData>(
     submitVendorRequestAction,
-    INITIAL_VENDOR_REQUEST_STATE,
+    INITIAL_MARKETING_FORM_STATE,
   );
   const formRef = useRef<HTMLFormElement>(null);
 

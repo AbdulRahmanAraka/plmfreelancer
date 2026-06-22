@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { MarketingFormState } from "@/components/marketing/form-action-state";
 import { LEGAL } from "@/config/legal";
 import { sendEmail } from "@/server/services/email.service";
 
@@ -89,24 +90,14 @@ const VendorRequestSchema = z.object({
     .max(6000),
 });
 
-export type VendorRequestState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_VENDOR_REQUEST_STATE: VendorRequestState = {
-  status: "idle",
-  message: "",
-};
-
 function asString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
 }
 
 export async function submitVendorRequestAction(
-  _prev: VendorRequestState,
+  _prev: MarketingFormState,
   formData: FormData,
-): Promise<VendorRequestState> {
+): Promise<MarketingFormState> {
   if (asString(formData.get("hp_field"))) {
     return {
       status: "success",

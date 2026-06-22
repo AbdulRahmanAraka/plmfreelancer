@@ -3,10 +3,10 @@
 import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  INITIAL_INQUIRY_STATE,
-  submitInquiryAction,
-  type InquiryState,
-} from "@/app/(marketing)/contact/actions";
+  INITIAL_MARKETING_FORM_STATE,
+  type MarketingFormState,
+} from "@/components/marketing/form-action-state";
+import { submitInquiryAction } from "@/app/(marketing)/contact/actions";
 
 type RequirementOption = {
   value: string;
@@ -32,9 +32,9 @@ const inputBase =
   "w-full rounded-xl border border-indigo-100 bg-white/90 px-4 py-3 text-sm text-indigo-950 placeholder:text-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100";
 
 export function InquiryForm() {
-  const [state, formAction] = useActionState<InquiryState, FormData>(
+  const [state, formAction] = useActionState<MarketingFormState, FormData>(
     submitInquiryAction,
-    INITIAL_INQUIRY_STATE,
+    INITIAL_MARKETING_FORM_STATE,
   );
 
   const formRef = useRef<HTMLFormElement>(null);

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { MarketingFormState } from "@/components/marketing/form-action-state";
 import { LEGAL } from "@/config/legal";
 import { sendEmail } from "@/server/services/email.service";
 
@@ -81,24 +82,14 @@ const ResourceRequestSchema = z.object({
     .max(6000),
 });
 
-export type ResourceRequestState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const INITIAL_RESOURCE_REQUEST_STATE: ResourceRequestState = {
-  status: "idle",
-  message: "",
-};
-
 function asString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value : "";
 }
 
 export async function submitResourceRequestAction(
-  _prev: ResourceRequestState,
+  _prev: MarketingFormState,
   formData: FormData,
-): Promise<ResourceRequestState> {
+): Promise<MarketingFormState> {
   try {
     return await handleResourceRequest(formData);
   } catch (err) {
@@ -113,7 +104,7 @@ export async function submitResourceRequestAction(
 
 async function handleResourceRequest(
   formData: FormData,
-): Promise<ResourceRequestState> {
+): Promise<MarketingFormState> {
   if (asString(formData.get("hp_field"))) {
     return {
       status: "success",
