@@ -78,7 +78,7 @@ const ResourceRequestSchema = z.object({
   description: z
     .string()
     .trim()
-    .min(20, "Please share a few more details about the role")
+    .min(20, "Please add at least 20 characters in Job Description / Requirement")
     .max(6000),
 });
 
