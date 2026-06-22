@@ -58,6 +58,7 @@ export function ResourceRequestForm() {
     <form
       ref={formRef}
       action={formAction}
+      encType="multipart/form-data"
       className="space-y-7"
       noValidate
     >

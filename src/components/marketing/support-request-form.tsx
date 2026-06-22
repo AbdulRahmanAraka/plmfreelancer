@@ -156,6 +156,7 @@ export function SupportRequestForm() {
     <form
       ref={formRef}
       action={formAction}
+      encType="multipart/form-data"
       className="space-y-7"
       noValidate
     >

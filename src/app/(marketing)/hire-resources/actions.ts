@@ -99,6 +99,21 @@ export async function submitResourceRequestAction(
   _prev: ResourceRequestState,
   formData: FormData,
 ): Promise<ResourceRequestState> {
+  try {
+    return await handleResourceRequest(formData);
+  } catch (err) {
+    console.error("[hire-resources] submit failed", err);
+    return {
+      status: "error",
+      message:
+        "We could not submit your request right now. Please try again or email contact@plmfreelancer.com.",
+    };
+  }
+}
+
+async function handleResourceRequest(
+  formData: FormData,
+): Promise<ResourceRequestState> {
   if (asString(formData.get("hp_field"))) {
     return {
       status: "success",

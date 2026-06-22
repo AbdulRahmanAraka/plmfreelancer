@@ -76,6 +76,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       // Profile picture uploads ride along in the same server-action POST.
       bodySizeLimit: "4mb",
+      // Allow both apex and www when DNS/proxy forwards a different Host header.
+      allowedOrigins: [
+        "plmfreelancer.com",
+        "www.plmfreelancer.com",
+        "*.plmfreelancer.com",
+      ],
     },
   },
   // TODO(deploy-unblock): Supabase admin/server clients are created without a
