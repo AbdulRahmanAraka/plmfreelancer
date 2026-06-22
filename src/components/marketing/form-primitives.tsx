@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
+import { Button } from "@/components/ui/button";
 
 export const FIELD_LABEL_CLASS =
   "text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700";
@@ -113,4 +114,42 @@ export function StatusBanner({ status, message }: StatusBannerProps) {
   }
 
   return null;
+}
+
+type FormSubmitFooterProps = {
+  status: "idle" | "success" | "error";
+  message: string;
+  helperText: string;
+  submitLabel: string;
+  loadingText?: string;
+  sectionRef?: RefObject<HTMLDivElement | null>;
+};
+
+export function FormSubmitFooter({
+  status,
+  message,
+  helperText,
+  submitLabel,
+  loadingText = "Submitting...",
+  sectionRef,
+}: FormSubmitFooterProps) {
+  return (
+    <div
+      ref={sectionRef}
+      className="space-y-3 border-t border-indigo-100/80 pt-5"
+    >
+      <StatusBanner status={status} message={message} />
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-slate-500">{helperText}</p>
+        <Button
+          type="submit"
+          size="lg"
+          loadingText={loadingText}
+          className="w-full sm:w-auto"
+        >
+          {submitLabel}
+        </Button>
+      </div>
+    </div>
+  );
 }

@@ -1,14 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
 import {
   FieldGroup,
   FIELD_LABEL_CLASS,
+  FormSubmitFooter,
   INPUT_BASE,
   RadioPill,
   RequiredMark,
-  StatusBanner,
 } from "@/components/marketing/form-primitives";
 import {
   INITIAL_MARKETING_FORM_STATE,
@@ -37,10 +36,18 @@ export function TrainingRequestForm() {
     INITIAL_MARKETING_FORM_STATE,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const submitSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
+    }
+
+    if (state.status === "success" || state.status === "error") {
+      submitSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [state]);
 
@@ -54,8 +61,6 @@ export function TrainingRequestForm() {
         className="sr-only"
         aria-hidden="true"
       />
-
-      <StatusBanner status={state.status} message={state.message} />
 
       <FieldGroup title="Contact Information">
         <div className="grid gap-5 sm:grid-cols-2">
@@ -193,19 +198,14 @@ export function TrainingRequestForm() {
         </label>
       </FieldGroup>
 
-      <div className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">
-          We will match you with experienced PLM trainers and respond shortly.
-        </p>
-        <Button
-          type="submit"
-          size="lg"
-          loadingText="Submitting..."
-          className="w-full sm:w-auto"
-        >
-          Request Training
-        </Button>
-      </div>
+      <FormSubmitFooter
+        sectionRef={submitSectionRef}
+        status={state.status}
+        message={state.message}
+        helperText="We will match you with experienced PLM trainers and respond shortly."
+        submitLabel="Request Training"
+        loadingText="Submitting..."
+      />
     </form>
   );
 }

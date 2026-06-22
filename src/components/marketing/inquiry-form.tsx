@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { FormSubmitFooter } from "@/components/marketing/form-primitives";
 import {
   INITIAL_MARKETING_FORM_STATE,
   type MarketingFormState,
@@ -38,10 +38,18 @@ export function InquiryForm() {
   );
 
   const formRef = useRef<HTMLFormElement>(null);
+  const submitSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
+    }
+
+    if (state.status === "success" || state.status === "error") {
+      submitSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [state]);
 
@@ -55,42 +63,6 @@ export function InquiryForm() {
         className="sr-only"
         aria-hidden="true"
       />
-
-      {state.status === "success" ? (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-        >
-          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m5 12 5 5 9-11" />
-            </svg>
-          </span>
-          <p>{state.message}</p>
-        </div>
-      ) : null}
-
-      {state.status === "error" ? (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
-        >
-          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white">
-            !
-          </span>
-          <p>{state.message}</p>
-        </div>
-      ) : null}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block space-y-1.5">
@@ -194,19 +166,14 @@ export function InquiryForm() {
         />
       </label>
 
-      <div className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">
-          By submitting you agree we can contact you about your inquiry.
-        </p>
-        <Button
-          type="submit"
-          size="lg"
-          loadingText="Sending..."
-          className="w-full sm:w-auto"
-        >
-          Send Inquiry
-        </Button>
-      </div>
+      <FormSubmitFooter
+        sectionRef={submitSectionRef}
+        status={state.status}
+        message={state.message}
+        helperText="By submitting you agree we can contact you about your inquiry."
+        submitLabel="Send Inquiry"
+        loadingText="Sending..."
+      />
     </form>
   );
 }
