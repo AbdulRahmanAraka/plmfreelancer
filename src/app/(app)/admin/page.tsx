@@ -39,6 +39,7 @@ type ProjectRow = {
   assigned_freelancer_id: string | null;
   attachment_path: string | null;
   created_at: string;
+  is_active: boolean | null;
 };
 
 type FreelancerOption = {
@@ -90,6 +91,12 @@ function statusBadgeClass(status: string): string {
   }
 }
 
+function listingBadgeClass(isActive: boolean): string {
+  return isActive
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+    : "bg-slate-100 text-slate-600 ring-slate-200";
+}
+
 export default async function AdminDashboardPage({ searchParams }: AdminPageProps) {
   await requireRole(["admin"]);
   const params = await searchParams;
@@ -101,12 +108,14 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
   const { data: projectsRaw, error: projectsError } = await admin
     .from("projects")
     .select(
-      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, duration, engagement_type, client_id, assigned_freelancer_id, attachment_path, created_at",
+      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, duration, engagement_type, client_id, assigned_freelancer_id, attachment_path, created_at, is_active",
     )
     .order("created_at", { ascending: false });
 
   const projects = (projectsRaw ?? []) as ProjectRow[];
   const filteredProjects = filterProjectsByQuery(projects, searchQuery);
+  const activeProjectCount = projects.filter((p) => p.is_active !== false).length;
+  const inactiveProjectCount = projects.length - activeProjectCount;
 
   const clientIds = [...new Set(projects.map((p) => p.client_id))];
   const assignedIds = [
@@ -256,7 +265,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
           </p>
         </div>
         <div className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-indigo-900">
-          {projects.length} {projects.length === 1 ? "project" : "projects"} • {freelancers.length} freelancers
+          {projects.length} {projects.length === 1 ? "project" : "projects"} • {activeProjectCount} active • {inactiveProjectCount} inactive • {freelancers.length} freelancers
         </div>
       </div>
 
@@ -303,6 +312,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
             const canAssign = project.status !== "accepted";
             const projectApplicants = applicationsByProject.get(project.id) ?? [];
             const applicantIdSet = new Set(projectApplicants.map((a) => a.freelancer_id));
+            const isListingActive = project.is_active !== false;
 
             return (
               <article
@@ -325,6 +335,14 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                         )}
                       >
                         {project.status.replace(/_/g, " ")}
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1",
+                          listingBadgeClass(isListingActive),
+                        )}
+                      >
+                        {isListingActive ? "Active" : "Inactive"}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
