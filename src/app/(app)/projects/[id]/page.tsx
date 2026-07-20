@@ -19,6 +19,10 @@ import { DeleteProjectButton } from '@/components/projects/delete-project-button
 import { ProjectSkillsList } from '@/components/projects/project-skills-list'
 import { formatBudgetRange } from '@/lib/format'
 import { getFreelancerProfileStatus } from '@/server/services/freelancer-profile-status.service'
+import {
+  projectDurationLabel,
+  projectEngagementLabel,
+} from '@/config/constants'
 import { cn } from '@/lib/utils'
 
 type ProjectDetailPageProps = {
@@ -81,7 +85,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const { data: project, error } = await db
     .from('projects')
     .select(
-      'id, title, description, status, budget_type, budget_currency, budget_min, budget_max, deadline, attachment_path, client_id, assigned_freelancer_id, created_at, updated_at',
+      'id, title, description, status, budget_type, budget_currency, budget_min, budget_max, duration, engagement_type, deadline, attachment_path, client_id, assigned_freelancer_id, created_at, updated_at',
     )
     .eq('id', projectId)
     .single()
@@ -224,9 +228,19 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-700/70">
-                Deadline
+                Duration
               </dt>
-              <dd className="mt-1 font-medium text-indigo-950">{formatDate(project.deadline)}</dd>
+              <dd className="mt-1 font-medium text-indigo-950">
+                {projectDurationLabel(project.duration)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-700/70">
+                Engagement
+              </dt>
+              <dd className="mt-1 font-medium text-indigo-950">
+                {projectEngagementLabel(project.engagement_type)}
+              </dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-700/70">

@@ -12,12 +12,16 @@ type AttachmentStatus = "idle" | "uploading" | "ready" | "error";
 type ProjectAttachmentFieldProps = {
   initialPath?: string | null;
   onUploadingChange?: (isUploading: boolean) => void;
+  onPathChange?: (path: string | null) => void;
+  registerHiddenInput?: boolean;
   className?: string;
 };
 
 export function ProjectAttachmentField({
   initialPath = null,
   onUploadingChange,
+  onPathChange,
+  registerHiddenInput = true,
   className,
 }: ProjectAttachmentFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +39,7 @@ export function ProjectAttachmentField({
     setPath(nextPath);
     setFileName(null);
     setError(null);
+    onPathChange?.(nextPath);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -94,6 +99,7 @@ export function ProjectAttachmentField({
 
       setPath(uploadPath);
       setStatus("ready");
+      onPathChange?.(uploadPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";
       setError(message);
@@ -104,7 +110,9 @@ export function ProjectAttachmentField({
 
   return (
     <div className={className}>
-      <input type="hidden" name="attachment_path" value={path ?? ""} />
+      {registerHiddenInput ? (
+        <input type="hidden" name="attachment_path" value={path ?? ""} />
+      ) : null}
       <input
         ref={inputRef}
         type="file"

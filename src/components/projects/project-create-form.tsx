@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MultiSelectChips } from "@/components/ui/multi-select-chips";
 import { createProjectAction } from "@/app/(app)/actions";
-import { SKILL_OPTIONS } from "@/config/constants";
+import { SKILL_OPTIONS, PROJECT_DURATION_OPTIONS, PROJECT_ENGAGEMENT_OPTIONS } from "@/config/constants";
 import { ProjectAttachmentField } from "./project-attachment-field";
 
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700";
@@ -91,16 +91,32 @@ export function ProjectCreateForm() {
         />
       </div>
 
-      <div className="md:col-span-2">
+      <div>
         <label className={labelClass}>
-          Deadline {required}
+          Duration {required}
         </label>
-        <input
-          name="deadline"
-          type="date"
-          required
-          className={inputClass}
-        />
+        <select name="duration" required className={inputClass}>
+          <option value="">Select duration</option>
+          {PROJECT_DURATION_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Engagement type {required}
+        </label>
+        <select name="engagement_type" required className={inputClass}>
+          <option value="">Select engagement type</option>
+          {PROJECT_ENGAGEMENT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="md:col-span-2">

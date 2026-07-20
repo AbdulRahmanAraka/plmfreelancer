@@ -11,6 +11,7 @@ import { requireRole } from "@/lib/auth/session";
 import { loadFreelancerIntros } from "@/server/services/freelancer-intro.service";
 import { cn } from "@/lib/utils";
 import { formatBudgetRange } from "@/lib/format";
+import { projectDurationLabel, projectEngagementLabel } from "@/config/constants";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { DeleteProjectButton } from "@/components/projects/delete-project-button";
 import { ProjectSearchBar } from "@/components/search/project-search-bar";
@@ -32,7 +33,8 @@ type ProjectRow = {
   budget_currency: string | null;
   budget_min: number | null;
   budget_max: number | null;
-  deadline: string | null;
+  duration: string | null;
+  engagement_type: string | null;
   client_id: string;
   assigned_freelancer_id: string | null;
   attachment_path: string | null;
@@ -99,7 +101,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
   const { data: projectsRaw, error: projectsError } = await admin
     .from("projects")
     .select(
-      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, deadline, client_id, assigned_freelancer_id, attachment_path, created_at",
+      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, duration, engagement_type, client_id, assigned_freelancer_id, attachment_path, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -361,9 +363,19 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                   </div>
                   <div>
                     <dt className="font-semibold uppercase tracking-wide text-indigo-700/70">
-                      Deadline
+                      Duration
                     </dt>
-                    <dd className="mt-0.5 text-indigo-950">{formatDate(project.deadline)}</dd>
+                    <dd className="mt-0.5 text-indigo-950">
+                      {projectDurationLabel(project.duration)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-indigo-700/70">
+                      Engagement
+                    </dt>
+                    <dd className="mt-0.5 text-indigo-950">
+                      {projectEngagementLabel(project.engagement_type)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="font-semibold uppercase tracking-wide text-indigo-700/70">

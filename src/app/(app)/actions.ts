@@ -10,6 +10,12 @@ import { sendUserEmail } from "@/server/services/email.service";
 import { getFreelancerProfileStatus } from "@/server/services/freelancer-profile-status.service";
 import { env } from "@/lib/env";
 import { normalizePhone } from "@/lib/utils";
+import {
+  PROJECT_DURATION_OPTIONS,
+  PROJECT_ENGAGEMENT_OPTIONS,
+  type ProjectDuration,
+  type ProjectEngagementType,
+} from "@/config/constants";
 
 /**
  * Return the user_id whose stored phone normalizes to the same digit-only
@@ -48,6 +54,22 @@ function parseSkillsFromForm(formData: FormData): string[] {
         .filter(Boolean),
     ),
   ];
+}
+
+const projectDurationValues = new Set<string>(
+  PROJECT_DURATION_OPTIONS.map((option) => option.value),
+);
+
+const projectEngagementValues = new Set<string>(
+  PROJECT_ENGAGEMENT_OPTIONS.map((option) => option.value),
+);
+
+function parseProjectDuration(value: string): ProjectDuration | null {
+  return projectDurationValues.has(value) ? (value as ProjectDuration) : null;
+}
+
+function parseProjectEngagementType(value: string): ProjectEngagementType | null {
+  return projectEngagementValues.has(value) ? (value as ProjectEngagementType) : null;
 }
 
 function asIntegerOrNull(value: string) {
@@ -134,7 +156,8 @@ export async function createProjectAction(formData: FormData) {
   const budgetCurrency = "USD";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
-  const deadline = asText(formData, "deadline");
+  const duration = parseProjectDuration(asText(formData, "duration"));
+  const engagementType = parseProjectEngagementType(asText(formData, "engagement_type"));
   const submittedPath = asText(formData, "attachment_path");
   const skills = parseSkillsFromForm(formData);
 
@@ -158,8 +181,12 @@ export async function createProjectAction(formData: FormData) {
     redirect("/client?error=Min+budget+cannot+be+greater+than+max+budget");
   }
 
-  if (!deadline) {
-    redirect("/client?error=Please+pick+a+deadline");
+  if (!duration) {
+    redirect("/client?error=Please+select+a+project+duration");
+  }
+
+  if (!engagementType) {
+    redirect("/client?error=Please+select+full+time+or+part+time");
   }
 
   const {
@@ -181,7 +208,8 @@ export async function createProjectAction(formData: FormData) {
       budget_currency: budgetCurrency,
       budget_min: budgetMin,
       budget_max: budgetMax,
-      deadline,
+      duration,
+      engagement_type: engagementType,
       contact_name: user?.user_metadata?.full_name ?? "Client",
       contact_email: user?.email ?? "",
       attachment_path: attachmentPath,
@@ -228,7 +256,8 @@ export async function updateProjectAction(formData: FormData) {
   const budgetCurrency = "USD";
   const budgetMin = asNumberOrNull(asText(formData, "budget_min"));
   const budgetMax = asNumberOrNull(asText(formData, "budget_max"));
-  const deadline = asText(formData, "deadline");
+  const duration = parseProjectDuration(asText(formData, "duration"));
+  const engagementType = parseProjectEngagementType(asText(formData, "engagement_type"));
   const submittedPath = asText(formData, "attachment_path");
 
   if (!projectId || !title || !description) {
@@ -243,8 +272,12 @@ export async function updateProjectAction(formData: FormData) {
     redirect("/client?error=Min+budget+cannot+be+greater+than+max+budget");
   }
 
-  if (!deadline) {
-    redirect("/client?error=Please+pick+a+deadline");
+  if (!duration) {
+    redirect("/client?error=Please+select+a+project+duration");
+  }
+
+  if (!engagementType) {
+    redirect("/client?error=Please+select+full+time+or+part+time");
   }
 
   const updatePayload: {
@@ -253,7 +286,8 @@ export async function updateProjectAction(formData: FormData) {
     budget_currency: string;
     budget_min: number;
     budget_max: number;
-    deadline: string;
+    duration: ProjectDuration;
+    engagement_type: ProjectEngagementType;
     attachment_path?: string;
   } = {
     title,
@@ -261,7 +295,8 @@ export async function updateProjectAction(formData: FormData) {
     budget_currency: budgetCurrency,
     budget_min: budgetMin,
     budget_max: budgetMax,
-    deadline,
+    duration,
+    engagement_type: engagementType,
   };
 
   if (submittedPath) {
@@ -288,6 +323,58 @@ export async function updateProjectAction(formData: FormData) {
 
   revalidatePath("/client");
   revalidatePath("/freelancer");
+  revalidatePath(`/projects/${projectId}`);
+}
+
+export async function toggleProjectActiveAction(formData: FormData) {
+  const role = await requireRole(["client", "admin"]);
+  const clientId = await getCurrentUserId();
+  const supabase = await createSupabaseServerClient();
+  const projectId = Number(asText(formData, "project_id"));
+  const isActiveRaw = asText(formData, "is_active");
+
+  if (!projectId || !["true", "false"].includes(isActiveRaw)) {
+    redirect("/client?error=Project+status+update+is+invalid");
+  }
+
+  const nextActive = isActiveRaw === "true";
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, title, client_id")
+    .eq("id", projectId)
+    .single();
+
+  if (!project) {
+    redirect("/client?error=Project+not+found");
+  }
+
+  if (role === "client" && project.client_id !== clientId) {
+    redirect("/client?error=You+cannot+update+this+project");
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ is_active: nextActive })
+    .eq("id", projectId);
+
+  if (error) {
+    redirect(`/client?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await createNotification({
+    recipientId: clientId,
+    actorId: clientId,
+    projectId,
+    kind: "system",
+    title: nextActive ? "Project Activated" : "Project Deactivated",
+    message: `Project "${project.title}" is now ${nextActive ? "active" : "inactive"}.`,
+  });
+
+  revalidatePath("/client");
+  revalidatePath("/freelancer");
+  revalidatePath("/admin");
+  revalidatePath(`/projects/${projectId}`);
 }
 
 export async function deleteProjectAction(formData: FormData) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState, type FormEvent } from "react";
+import { useTransition, useState, useMemo, useEffect, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { MultiSelectChips } from "@/components/ui/multi-select-chips";
 import { CountryStateSelect } from "@/components/ui/country-state-select";
@@ -39,6 +39,41 @@ const inputClass =
 const required = <span className="text-rose-500">*</span>;
 
 const MAX_PROFILE_IMAGE_BYTES = 3 * 1024 * 1024;
+
+type FreelancerSavedProfile = FreelancerProfileFormProps["saved"];
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((value, index) => value === right[index]);
+}
+
+function isFreelancerProfileDirty(
+  saved: FreelancerSavedProfile,
+  values: FreelancerSavedProfile,
+  hasNewProfileImage: boolean,
+): boolean {
+  if (hasNewProfileImage) return true;
+
+  return (
+    saved.full_name !== values.full_name ||
+    saved.phone !== values.phone ||
+    saved.professional_title !== values.professional_title ||
+    saved.introduction !== values.introduction ||
+    saved.country !== values.country ||
+    saved.state !== values.state ||
+    saved.experience_years !== values.experience_years ||
+    saved.experience_months !== values.experience_months ||
+    saved.hourly_rate !== values.hourly_rate ||
+    saved.portfolio_url !== values.portfolio_url ||
+    saved.availability !== values.availability ||
+    saved.looking_for_full_time_job !== values.looking_for_full_time_job ||
+    saved.notice_period !== values.notice_period ||
+    !arraysEqual(saved.skills, values.skills) ||
+    !arraysEqual(saved.software, values.software)
+  );
+}
 
 function applyFreelancerDraftToFormData(
   formData: FormData,
@@ -82,12 +117,24 @@ export function FreelancerProfileForm({
 }: FreelancerProfileFormProps) {
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hasNewProfileImage, setHasNewProfileImage] = useState(false);
   const { values, update, ready } = useProfileDraft(
     "freelancer",
     userId,
     saved,
     savedSuccessfully,
   );
+
+  const isDirty = useMemo(
+    () => isFreelancerProfileDirty(saved, values, hasNewProfileImage),
+    [saved, values, hasNewProfileImage],
+  );
+
+  useEffect(() => {
+    if (savedSuccessfully) {
+      setHasNewProfileImage(false);
+    }
+  }, [savedSuccessfully]);
 
   if (!ready) {
     return (
@@ -140,6 +187,10 @@ export function FreelancerProfileForm({
             name="profile_image"
             type="file"
             accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              setHasNewProfileImage(Boolean(file && file.size > 0));
+            }}
             className="flex-1 rounded-xl border border-border px-3 py-2 text-sm outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-1 file:text-indigo-700"
           />
         </div>
@@ -327,14 +378,16 @@ export function FreelancerProfileForm({
         />
       </div>
 
-      <Button
-        type="submit"
-        loading={isPending}
-        loadingText="Saving..."
-        className="md:col-span-2"
-      >
-        Save Profile
-      </Button>
+      {isDirty ? (
+        <Button
+          type="submit"
+          loading={isPending}
+          loadingText="Saving..."
+          className="md:col-span-2"
+        >
+          Save Profile
+        </Button>
+      ) : null}
     </form>
   );
 }

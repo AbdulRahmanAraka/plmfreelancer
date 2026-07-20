@@ -14,7 +14,7 @@ import {
 } from "@/components/projects/enhancement-thread";
 import { ProjectCreateForm } from "@/components/projects/project-create-form";
 import { ProjectUpdateForm } from "@/components/projects/project-update-form";
-import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { ProjectActiveToggle } from "@/components/projects/project-active-toggle";
 import { formatBudgetRange } from "@/lib/format";
 import Link from "next/link";
 
@@ -29,7 +29,7 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
   const { data: projects } = await supabase
     .from("projects")
     .select(
-      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, deadline, attachment_path, assigned_freelancer_id, created_at",
+      "id, title, description, status, budget_type, budget_currency, budget_min, budget_max, duration, engagement_type, attachment_path, assigned_freelancer_id, is_active, created_at",
     )
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
@@ -223,6 +223,12 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                     ) : null}
                   </div>
                 ) : null}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <ProjectActiveToggle
+                    projectId={project.id}
+                    isActive={project.is_active !== false}
+                  />
+                </div>
                 <ProjectUpdateForm
                   project={{
                     id: project.id,
@@ -231,13 +237,11 @@ export default async function ClientDashboardPage({ searchParams }: ClientPagePr
                     budget_currency: project.budget_currency,
                     budget_min: project.budget_min,
                     budget_max: project.budget_max,
-                    deadline: project.deadline,
+                    duration: project.duration,
+                    engagement_type: project.engagement_type,
                     attachment_path: project.attachment_path,
                   }}
                 />
-                <div className="mt-2">
-                  <DeleteProjectButton projectId={project.id} projectTitle={project.title} />
-                </div>
               </article>
               );
             })}

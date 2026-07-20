@@ -15,6 +15,7 @@ import {
   type EnhancementMessage,
 } from "@/components/projects/enhancement-thread";
 import { formatBudgetRange } from "@/lib/format";
+import { projectDurationLabel, projectEngagementLabel } from "@/config/constants";
 import { getFreelancerProfileStatus } from "@/server/services/freelancer-profile-status.service";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { ProjectDescriptionPreview } from "@/components/projects/project-description-preview";
@@ -55,15 +56,16 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
 
   const { data: openProjects } = await supabase
     .from("projects")
-    .select("id, title, description, budget_type, budget_currency, budget_min, budget_max, status, deadline, attachment_path")
+    .select("id, title, description, budget_type, budget_currency, budget_min, budget_max, status, duration, engagement_type, attachment_path")
     .in("status", ["open", "assigned", "in_progress"])
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(20);
   const safeProjects = openProjects ?? [];
 
   const { data: assignedProjects } = await supabase
     .from("projects")
-    .select("id, title, description, status, deadline, attachment_path, client_id")
+    .select("id, title, description, status, duration, engagement_type, attachment_path, client_id")
     .eq("assigned_freelancer_id", freelancerId)
     .in("status", ["assigned", "in_progress", "completed", "accepted", "enhancement_requested"])
     .order("updated_at", { ascending: false });
@@ -379,6 +381,11 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                     Budget ({project.budget_type ?? "—"}):{" "}
                     {formatBudgetRange(project.budget_min, project.budget_max, project.budget_currency)}
                   </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Duration: {projectDurationLabel(project.duration)}
+                    <span className="mx-1.5 text-indigo-200">•</span>
+                    {projectEngagementLabel(project.engagement_type)}
+                  </p>
                 </ProjectListCard>
               );
             })}
@@ -501,6 +508,11 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                   skills={skillsByProject.get(project.id) ?? []}
                   className="mt-2"
                 />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Duration: {projectDurationLabel(project.duration)}
+                  <span className="mx-1.5 text-indigo-200">•</span>
+                  {projectEngagementLabel(project.engagement_type)}
+                </p>
               </ProjectListCard>
               );
             })}
