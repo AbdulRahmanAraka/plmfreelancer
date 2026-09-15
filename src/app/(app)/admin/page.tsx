@@ -14,6 +14,7 @@ import { formatBudgetRange } from "@/lib/format";
 import { projectDurationLabel, projectEngagementLabel } from "@/config/constants";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { DeleteProjectButton } from "@/components/projects/delete-project-button";
+import { AdminProjectDateForm } from "@/components/admin/admin-project-date-form";
 import { ProjectSearchBar } from "@/components/search/project-search-bar";
 import { ProjectDescriptionPreview } from "@/components/projects/project-description-preview";
 import { filterProjectsByQuery } from "@/lib/project-search";
@@ -406,6 +407,9 @@ export default async function AdminDashboardPage({ searchParams }: AdminPageProp
                         <span className="text-muted-foreground">Unassigned</span>
                       )}
                     </dd>
+                  </div>
+                  <div>
+                    <AdminProjectDateForm projectId={project.id} createdAt={project.created_at} />
                   </div>
                 </dl>
 

@@ -16,6 +16,7 @@ import {
   type ProjectDuration,
   type ProjectEngagementType,
 } from "@/config/constants";
+import { canChangeProjectDate } from "@/server/policies/projects.policy";
 
 /**
  * Return the user_id whose stored phone normalizes to the same digit-only
@@ -87,6 +88,32 @@ function sanitizeAttachmentPath(path: string, ownerId: string): string | null {
   if (path.includes("..") || path.startsWith("/")) return null;
   if (!path.startsWith(`${ownerId}/`)) return null;
   return path;
+}
+
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseProjectDateInput(value: string): string | null {
+  const match = DATE_ONLY_RE.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed.toISOString();
+}
+
+function adminErrorRedirect(message: string): never {
+  redirect(`/admin?error=${encodeURIComponent(message)}`);
 }
 
 type NotificationKind =
@@ -720,6 +747,39 @@ export async function adminUnassignProjectAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/freelancer");
   revalidatePath("/client");
+}
+
+export async function adminUpdateProjectDateAction(formData: FormData) {
+  const role = await requireRole(["admin"]);
+  if (!canChangeProjectDate(role)) {
+    adminErrorRedirect("You do not have permission to change the project date");
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const projectId = Number(asText(formData, "project_id"));
+  const createdAt = parseProjectDateInput(asText(formData, "created_at"));
+
+  if (!projectId) {
+    adminErrorRedirect("Project selection is invalid");
+  }
+
+  if (!createdAt) {
+    adminErrorRedirect("Please choose a valid project date");
+  }
+
+  const { error } = await adminClient
+    .from("projects")
+    .update({ created_at: createdAt })
+    .eq("id", projectId);
+
+  if (error) {
+    adminErrorRedirect(error.message);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/freelancer");
+  revalidatePath("/client");
+  revalidatePath(`/projects/${projectId}`);
 }
 
 export async function assignFreelancerAction(formData: FormData) {

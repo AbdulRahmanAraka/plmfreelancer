@@ -16,6 +16,7 @@ import {
   type EnhancementMessage,
 } from '@/components/projects/enhancement-thread'
 import { DeleteProjectButton } from '@/components/projects/delete-project-button'
+import { AdminProjectDateForm } from '@/components/admin/admin-project-date-form'
 import { ProjectSkillsList } from '@/components/projects/project-skills-list'
 import { formatBudgetRange } from '@/lib/format'
 import { getFreelancerProfileStatus } from '@/server/services/freelancer-profile-status.service'
@@ -200,6 +201,11 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
               <p className="mt-1 text-xs text-muted-foreground">
                 Project #{project.id} • Posted {formatDate(project.created_at)}
               </p>
+              {role === 'admin' ? (
+                <div className="mt-3">
+                  <AdminProjectDateForm projectId={project.id} createdAt={project.created_at} />
+                </div>
+              ) : null}
             </div>
           </header>
 
