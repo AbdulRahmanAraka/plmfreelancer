@@ -468,9 +468,13 @@ export async function applyToProjectAction(formData: FormData) {
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, title")
+    .select("id, title, status")
     .eq("id", projectId)
     .single();
+
+  if (!project || project.status !== "open") {
+    redirect("/freelancer?error=This+project+is+no+longer+open+for+applications");
+  }
 
   const { error } = await supabase.from("project_applications").insert({
     project_id: projectId,

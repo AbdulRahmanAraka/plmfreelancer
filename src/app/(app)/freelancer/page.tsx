@@ -54,14 +54,12 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
   const assignedCount = (applications ?? []).filter((item) => item.status === "assigned").length;
   const acceptedCount = (applications ?? []).filter((item) => item.status === "accepted").length;
 
-  const { data: openProjects } = await supabase
+  const { data: listedProjects } = await supabase
     .from("projects")
     .select("id, title, description, budget_type, budget_currency, budget_min, budget_max, status, duration, engagement_type, attachment_path")
-    .in("status", ["open", "assigned", "in_progress"])
     .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(20);
-  const safeProjects = openProjects ?? [];
+    .order("created_at", { ascending: false });
+  const safeProjects = listedProjects ?? [];
 
   const { data: assignedProjects } = await supabase
     .from("projects")
@@ -203,7 +201,7 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                 Complete your profile to start applying
               </h2>
               <p className="text-sm text-amber-900/80">
-                You can browse open projects below, but you must finish the
+                You can browse all listed projects below, but you must finish the
                 fields marked below before the Apply button is unlocked.
               </p>
               <ul className="flex flex-wrap gap-1.5 pt-1">
@@ -276,11 +274,11 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
       </Card>
 
       <Card
-        title="Open Opportunities"
+        title="All Projects"
         description={
           searchQuery
             ? `Showing projects matching "${searchQuery}"`
-            : "Apply to active client projects"
+            : "Browse assigned and unassigned projects. Only the status is shown."
         }
       >
         {params.error ? (
@@ -299,6 +297,7 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
             {filteredProjects.map((project) => {
               const myStatus = applicationMap.get(project.id);
               const signedUrl = signedAttachmentMap.get(project.id);
+              const isOpenForApplications = project.status === "open";
 
               return (
                 <ProjectListCard
@@ -321,7 +320,7 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                           <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs capitalize text-emerald-800">
                             Application: {myStatus.replace("_", " ")}
                           </span>
-                        ) : !profileStatus.isComplete ? (
+                        ) : !isOpenForApplications ? null : !profileStatus.isComplete ? (
                           <Link
                             href="/freelancer/profile"
                             className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
@@ -364,8 +363,10 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
                     <h3 className="font-semibold text-indigo-950 transition group-hover:text-indigo-700 group-hover:underline">
                       {project.title}
                     </h3>
-                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs capitalize text-indigo-800">
-                      {project.status.replace("_", " ")}
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs capitalize ${listingStatusClass(project.status)}`}
+                    >
+                      {project.status.replace(/_/g, " ")}
                     </span>
                   </div>
                   <ProjectDescriptionPreview
@@ -521,4 +522,23 @@ export default async function FreelancerDashboardPage({ searchParams }: Freelanc
       </Card>
     </div>
   );
+}
+
+function listingStatusClass(status: string): string {
+  switch (status) {
+    case "open":
+      return "bg-emerald-100 text-emerald-800";
+    case "assigned":
+      return "bg-indigo-100 text-indigo-800";
+    case "in_progress":
+      return "bg-amber-100 text-amber-800";
+    case "completed":
+      return "bg-sky-100 text-sky-800";
+    case "accepted":
+      return "bg-violet-100 text-violet-800";
+    case "enhancement_requested":
+      return "bg-rose-100 text-rose-800";
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
 }

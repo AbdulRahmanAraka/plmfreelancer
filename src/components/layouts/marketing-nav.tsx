@@ -27,6 +27,10 @@ const authLinks: NavLink[] = [
   { href: "/register", label: "Register" },
 ];
 
+function dashboardLink(href: string): NavLink {
+  return { href, label: "Dashboard" };
+}
+
 function NavItem({
   link,
   pathname,
@@ -173,10 +177,15 @@ function MobileServicesAccordion({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-export function MarketingNav() {
+type MarketingNavProps = {
+  dashboardHref?: string | null;
+};
+
+export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const drawerId = useId();
+  const accountLinks = dashboardHref ? [dashboardLink(dashboardHref)] : authLinks;
 
   useEffect(() => {
     setIsMobileOpen(false);
@@ -206,9 +215,19 @@ export function MarketingNav() {
           {secondaryLinks.map((link) => (
             <NavItem key={link.href} link={link} pathname={pathname} />
           ))}
-          {authLinks.map((link) => (
-            <NavItem key={link.href} link={link} pathname={pathname} />
-          ))}
+          {accountLinks.map((link) =>
+            dashboardHref ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-md bg-indigo-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 lg:px-4"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <NavItem key={link.href} link={link} pathname={pathname} />
+            ),
+          )}
         </nav>
 
         <button
@@ -251,14 +270,25 @@ export function MarketingNav() {
             />
           ))}
           <div className="mt-1 border-t border-indigo-50 pt-1">
-            {authLinks.map((link) => (
-              <MobileLink
-                key={link.href}
-                link={link}
-                pathname={pathname}
-                onNavigate={closeMobile}
-              />
-            ))}
+            {accountLinks.map((link) =>
+              dashboardHref ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={closeMobile}
+                  className="block px-4 py-3 text-sm font-semibold text-indigo-700"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <MobileLink
+                  key={link.href}
+                  link={link}
+                  pathname={pathname}
+                  onNavigate={closeMobile}
+                />
+              ),
+            )}
           </div>
         </nav>
       </div>

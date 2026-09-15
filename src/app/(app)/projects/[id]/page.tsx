@@ -153,7 +153,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const showApply =
     role === 'freelancer' &&
     !myApplicationStatus &&
-    ['open', 'assigned', 'in_progress'].includes(project.status)
+    project.status === 'open'
 
   return (
     <div className="space-y-6">
