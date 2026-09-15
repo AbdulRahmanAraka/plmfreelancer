@@ -215,19 +215,9 @@ export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
           {secondaryLinks.map((link) => (
             <NavItem key={link.href} link={link} pathname={pathname} />
           ))}
-          {accountLinks.map((link) =>
-            dashboardHref ? (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-md bg-indigo-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 lg:px-4"
-              >
-                {link.label}
-              </Link>
-            ) : (
-              <NavItem key={link.href} link={link} pathname={pathname} />
-            ),
-          )}
+          {accountLinks.map((link) => (
+            <NavItem key={link.href} link={link} pathname={pathname} />
+          ))}
         </nav>
 
         <button
@@ -270,25 +260,14 @@ export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
             />
           ))}
           <div className="mt-1 border-t border-indigo-50 pt-1">
-            {accountLinks.map((link) =>
-              dashboardHref ? (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={closeMobile}
-                  className="block px-4 py-3 text-sm font-semibold text-indigo-700"
-                >
-                  {link.label}
-                </Link>
-              ) : (
-                <MobileLink
-                  key={link.href}
-                  link={link}
-                  pathname={pathname}
-                  onNavigate={closeMobile}
-                />
-              ),
-            )}
+            {accountLinks.map((link) => (
+              <MobileLink
+                key={link.href}
+                link={link}
+                pathname={pathname}
+                onNavigate={closeMobile}
+              />
+            ))}
           </div>
         </nav>
       </div>
