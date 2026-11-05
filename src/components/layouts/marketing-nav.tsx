@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { AccountMenu } from "@/components/layouts/account-menu";
 import { SiteLogoLink } from "@/components/layouts/site-header";
+import type { HeaderAccount } from "@/lib/auth/session";
 import {
   ServicesMenu,
   SERVICE_GROUPS,
@@ -26,10 +28,6 @@ const authLinks: NavLink[] = [
   { href: "/login", label: "Login" },
   { href: "/register", label: "Register" },
 ];
-
-function dashboardLink(href: string): NavLink {
-  return { href, label: "Dashboard" };
-}
 
 function NavItem({
   link,
@@ -178,14 +176,14 @@ function MobileServicesAccordion({ onNavigate }: { onNavigate: () => void }) {
 }
 
 type MarketingNavProps = {
-  dashboardHref?: string | null;
+  account?: HeaderAccount | null;
 };
 
-export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
+export function MarketingNav({ account = null }: MarketingNavProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const drawerId = useId();
-  const accountLinks = dashboardHref ? [dashboardLink(dashboardHref)] : authLinks;
+  const accountLinks = account ? [] : authLinks;
 
   useEffect(() => {
     setIsMobileOpen(false);
@@ -218,18 +216,22 @@ export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
           {accountLinks.map((link) => (
             <NavItem key={link.href} link={link} pathname={pathname} />
           ))}
+          {account ? <AccountMenu account={account} /> : null}
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setIsMobileOpen((prev) => !prev)}
-          aria-expanded={isMobileOpen}
-          aria-controls={drawerId}
-          aria-label={isMobileOpen ? "Close navigation" : "Open navigation"}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-indigo-950 transition hover:bg-indigo-100/70 lg:hidden"
-        >
-          <HamburgerIcon open={isMobileOpen} />
-        </button>
+        <div className="flex items-center gap-1 lg:hidden">
+          {account ? <AccountMenu account={account} /> : null}
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen((prev) => !prev)}
+            aria-expanded={isMobileOpen}
+            aria-controls={drawerId}
+            aria-label={isMobileOpen ? "Close navigation" : "Open navigation"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-indigo-950 transition hover:bg-indigo-100/70"
+          >
+            <HamburgerIcon open={isMobileOpen} />
+          </button>
+        </div>
       </div>
 
       <div
@@ -259,16 +261,18 @@ export function MarketingNav({ dashboardHref = null }: MarketingNavProps) {
               onNavigate={closeMobile}
             />
           ))}
-          <div className="mt-1 border-t border-indigo-50 pt-1">
-            {accountLinks.map((link) => (
-              <MobileLink
-                key={link.href}
-                link={link}
-                pathname={pathname}
-                onNavigate={closeMobile}
-              />
-            ))}
-          </div>
+          {accountLinks.length > 0 ? (
+            <div className="mt-1 border-t border-indigo-50 pt-1">
+              {accountLinks.map((link) => (
+                <MobileLink
+                  key={link.href}
+                  link={link}
+                  pathname={pathname}
+                  onNavigate={closeMobile}
+                />
+              ))}
+            </div>
+          ) : null}
         </nav>
       </div>
     </header>

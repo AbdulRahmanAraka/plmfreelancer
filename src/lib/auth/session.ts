@@ -4,6 +4,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type UserRole = "client" | "freelancer" | "admin";
 
+export type HeaderAccount = {
+  name: string;
+  email: string;
+  role: UserRole;
+  dashboardHref: string;
+};
+
 export function dashboardPathForRole(role: UserRole): string {
   switch (role) {
     case "admin":
@@ -55,6 +62,31 @@ export async function getOptionalUserRole(): Promise<UserRole | null> {
 
   if (!data?.role) return null;
   return data.role as UserRole;
+}
+
+export async function getHeaderAccount(): Promise<HeaderAccount | null> {
+  if (!hasSupabaseEnv) return null;
+
+  const session = await getSession();
+  if (!session) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name, role")
+    .eq("user_id", session.user.id)
+    .single();
+
+  const role = (data?.role ?? "freelancer") as UserRole;
+  const email = session.user.email ?? "";
+  const name = data?.full_name?.trim() || email.split("@")[0] || "Account";
+
+  return {
+    name,
+    email,
+    role,
+    dashboardHref: dashboardPathForRole(role),
+  };
 }
 
 export async function getCurrentUserRole(): Promise<UserRole | null> {

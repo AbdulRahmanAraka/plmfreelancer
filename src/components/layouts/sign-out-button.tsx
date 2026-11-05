@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { signOutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 
-export function SignOutButton() {
+export function SignOutButton({ appearance = "button" }: { appearance?: "button" | "menu" }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -25,17 +26,25 @@ export function SignOutButton() {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => setOpen(true)}
-      >
-        Sign Out
-      </Button>
+      {appearance === "menu" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+        >
+          Sign out
+        </button>
+      ) : (
+        <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+          Sign Out
+        </Button>
+      )}
 
-      {open ? (
+      {open
+        ? createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-950/40 px-4 backdrop-blur-sm"
+          data-signout-dialog=""
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 px-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="signout-title"
@@ -66,7 +75,7 @@ export function SignOutButton() {
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <h2 id="signout-title" className="text-base font-semibold text-indigo-950">
+                <h2 id="signout-title" className="text-base font-semibold text-foreground">
                   Sign out?
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -97,8 +106,10 @@ export function SignOutButton() {
               </Button>
             </div>
           </div>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </>
   );
 }

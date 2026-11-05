@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { AccountMenu } from "@/components/layouts/account-menu";
 import { SiteHeaderBar } from "@/components/layouts/site-header";
+import { getHeaderAccount } from "@/lib/auth/session";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const account = await getHeaderAccount();
+
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeaderBar />
+      <SiteHeaderBar>{account ? <AccountMenu account={account} /> : null}</SiteHeaderBar>
       <div className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-xs font-semibold uppercase tracking-widest text-indigo-700">
         Error 404

@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 import { MarketingNav } from "@/components/layouts/marketing-nav";
 import { MarketingFooter } from "@/components/layouts/marketing-footer";
-import { dashboardPathForRole, getOptionalUserRole } from "@/lib/auth/session";
+import { getHeaderAccount } from "@/lib/auth/session";
 
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
-  const role = await getOptionalUserRole();
-  const dashboardHref = role ? dashboardPathForRole(role) : null;
+  const account = await getHeaderAccount();
 
   return (
     <>
-      <MarketingNav dashboardHref={dashboardHref} />
+      <MarketingNav account={account} />
       {children}
       <MarketingFooter />
     </>

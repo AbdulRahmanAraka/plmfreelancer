@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "src/app/not-found.tsx"
+        ],
+        "createdAt": "2026-11-05T23:08:22.097Z",
+        "reason": "Agent: 404 heading already uses the site indigo-950 heading color, same as dashboards and account pages"
+      }
+    ]
+  }
+}

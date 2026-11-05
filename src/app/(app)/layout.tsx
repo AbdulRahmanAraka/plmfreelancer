@@ -3,7 +3,7 @@ import { AppShell } from "@/components/layouts/app-shell";
 import { Card } from "@/components/ui/card";
 import { SiteHeaderBar } from "@/components/layouts/site-header";
 import { hasSupabaseEnv } from "@/lib/env";
-import { requireAuth } from "@/lib/auth/session";
+import { dashboardPathForRole, requireAuth, type HeaderAccount } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -29,11 +29,17 @@ export default async function ProtectedAppLayout({ children }: { children: React
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, full_name")
     .eq("user_id", session.user.id)
     .single();
 
   const role = (profile?.role ?? "freelancer") as "client" | "freelancer" | "admin";
+  const account: HeaderAccount = {
+    name: profile?.full_name?.trim() || session.user.email?.split("@")[0] || "Account",
+    email: session.user.email ?? "",
+    role,
+    dashboardHref: dashboardPathForRole(role),
+  };
 
   const { data: notifications } = await supabase
     .from("notifications")
@@ -42,5 +48,9 @@ export default async function ProtectedAppLayout({ children }: { children: React
     .order("created_at", { ascending: false })
     .limit(12);
 
-  return <AppShell role={role} notifications={notifications ?? []}>{children}</AppShell>;
+  return (
+    <AppShell role={role} notifications={notifications ?? []} account={account}>
+      {children}
+    </AppShell>
+  );
 }

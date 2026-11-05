@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { markNotificationReadAction } from "@/app/(app)/actions";
 import { Button } from "@/components/ui/button";
-import { SiteHeaderBar, SiteLogoLink } from "@/components/layouts/site-header";
-import { SignOutButton } from "@/components/layouts/sign-out-button";
+import { AccountMenu } from "@/components/layouts/account-menu";
+import { SiteHeaderBar } from "@/components/layouts/site-header";
+import type { HeaderAccount } from "@/lib/auth/session";
 
 type ShellRole = "client" | "freelancer" | "admin";
 
@@ -37,10 +38,12 @@ export function AppShell({
   children,
   role,
   notifications,
+  account,
 }: {
   children: ReactNode;
   role: ShellRole;
   notifications: NotificationItem[];
+  account: HeaderAccount;
 }) {
   const navItems = navByRole[role];
   const unreadCount = notifications.filter((item) => !item.is_read).length;
@@ -48,15 +51,12 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeaderBar className="lg:hidden">
-        <SignOutButton />
+      <SiteHeaderBar>
+        <AccountMenu account={account} />
       </SiteHeaderBar>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1">
         <aside className="hidden w-64 shrink-0 border-r border-border bg-white/85 p-6 backdrop-blur lg:block">
-          <div className="mb-7">
-            <SiteLogoLink height={40} />
-          </div>
           <nav className="space-y-1">
           {navItems.map((item) => (
             <Link
@@ -70,16 +70,13 @@ export function AppShell({
         </nav>
       </aside>
       <main className="flex-1 p-4 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-          {showNotifications ? (
+        {showNotifications ? (
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
             <div className="mr-auto rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-indigo-900">
               Notifications: {unreadCount} unread
             </div>
-          ) : null}
-          <div className="hidden lg:block">
-            <SignOutButton />
           </div>
-        </div>
+        ) : null}
         {showNotifications ? (
           <div className="mb-4 rounded-xl border border-border bg-white p-3">
             {notifications.length === 0 ? (
